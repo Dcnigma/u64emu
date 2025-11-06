@@ -120,8 +120,7 @@ void deinitEgl() {
 int mmDisplay::Open(uint16_t Width, uint16_t Height) {
     if (!initEgl()) return -1;
     gladLoadGL();
-    glViewport(0, 0, Width, Height); // ensure viewport matches size
-
+    glViewport(0, 0, 1280, 720);
     GLuint vsh = createAndCompileShader(GL_VERTEX_SHADER, vertexShaderSource);
     GLuint fsh = createAndCompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
 
@@ -161,7 +160,7 @@ int mmDisplay::Open(uint16_t Width, uint16_t Height) {
 void mmDisplay::Close() { deinitEgl(); }
 
 bool mmDisplay::RenderScene() {
-    glViewport(0, 0, 320, 240);   // make sure viewport matches window
+    glViewport(0, 0, 1280, 720);
     glClearColor(0.0f, 1.0f, 0.0f, 1.0f); // green test
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     eglSwapBuffers(s_display, s_surface);
