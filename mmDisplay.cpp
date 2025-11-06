@@ -1,7 +1,4 @@
 #include "mmDisplay.h"
-#include "switch.h"
-#include <EGL/egl.h>
-#include <glad/glad.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -9,7 +6,7 @@
 #define HEIGHT 720
 
 //-----------------------------------------------------------------------------
-// Define static members
+// Static member definitions
 //-----------------------------------------------------------------------------
 EGLDisplay mmDisplay::s_display = EGL_NO_DISPLAY;
 EGLContext mmDisplay::s_context = EGL_NO_CONTEXT;
@@ -20,18 +17,17 @@ GLuint mmDisplay::VAO = 0;
 GLuint mmDisplay::EBO = 0;
 GLuint mmDisplay::s_tex = 0;
 
-// Declare global display object
-mmDisplay theDisplay;
-
 //-----------------------------------------------------------------------------
-// Vertex and index data
+// Vertex data
 //-----------------------------------------------------------------------------
 static const float vertices[] = {
+    // positions       // colors        // tex coords
      1.0f,  1.0f, 0.0f, 1.0f,0.0f,0.0f, 1.0f,0.0f,
      1.0f, -1.0f, 0.0f, 0.0f,1.0f,0.0f, 1.0f,1.0f,
     -1.0f, -1.0f, 0.0f, 0.0f,0.0f,1.0f, 0.0f,1.0f,
     -1.0f,  1.0f, 0.0f, 1.0f,1.0f,0.0f, 0.0f,0.0f
 };
+
 static const unsigned int indices[] = { 0, 1, 3, 1, 2, 3 };
 
 // Shader sources
@@ -40,12 +36,9 @@ static const char* vertexShaderSource = R"text(
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aColor;
 layout(location = 2) in vec2 aTexCoord;
-
 out vec3 ourColor;
 out vec2 TexCoord;
-
-void main()
-{
+void main() {
     gl_Position = vec4(aPos, 1.0);
     ourColor = aColor;
     TexCoord = aTexCoord;
@@ -55,22 +48,35 @@ void main()
 static const char* fragmentShaderSource = R"text(
 #version 330 core
 out vec4 FragColor;
-
 in vec3 ourColor;
 in vec2 TexCoord;
-
 uniform sampler2D texture1;
-
-void main()
-{
+void main() {
     FragColor = texture(texture1, TexCoord);
 }
 )text";
 
 //-----------------------------------------------------------------------------
-// Private helper function (not a class member)
+// Global display object
 //-----------------------------------------------------------------------------
-static GLuint createAndCompileShader(GLenum type, const char* source) {
+mmDisplay theDisplay;
+
+//-----------------------------------------------------------------------------
+// Constructor / Destructor
+//-----------------------------------------------------------------------------
+mmDisplay::mmDisplay() {
+    IntermediateBuffer = (WORD*)malloc(320 * 240 * sizeof(WORD));
+    nwindowSetDimensions(nwindowGetDefault(), WIDTH, HEIGHT);
+}
+
+mmDisplay::~mmDisplay() {
+    if (IntermediateBuffer) free(IntermediateBuffer);
+}
+
+//-----------------------------------------------------------------------------
+// Private helper: compile shader
+//-----------------------------------------------------------------------------
+GLuint mmDisplay::createAndCompileShader(GLenum type, const char* source) {
     GLuint handle = glCreateShader(type);
     glShaderSource(handle, 1, &source, NULL);
     glCompileShader(handle);
@@ -87,7 +93,7 @@ static GLuint createAndCompileShader(GLenum type, const char* source) {
 }
 
 //-----------------------------------------------------------------------------
-// Private EGL helpers
+// Private helper: EGL initialization
 //-----------------------------------------------------------------------------
 bool mmDisplay::initEgl() {
     s_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -122,6 +128,9 @@ bool mmDisplay::initEgl() {
     return true;
 }
 
+//-----------------------------------------------------------------------------
+// Private helper: EGL deinitialization
+//-----------------------------------------------------------------------------
 void mmDisplay::deinitEgl() {
     if (s_display != EGL_NO_DISPLAY) {
         if (s_context) {
@@ -138,17 +147,8 @@ void mmDisplay::deinitEgl() {
 }
 
 //-----------------------------------------------------------------------------
-// Public methods
+// Public interface
 //-----------------------------------------------------------------------------
-mmDisplay::mmDisplay() {
-    IntermediateBuffer = (WORD*)malloc(320 * 240 * sizeof(WORD));
-    nwindowSetDimensions(nwindowGetDefault(), WIDTH, HEIGHT);
-}
-
-mmDisplay::~mmDisplay() {
-    if (IntermediateBuffer) free(IntermediateBuffer);
-}
-
 int mmDisplay::Open(uint16_t Width, uint16_t Height) {
     if (!initEgl()) return -1;
 
@@ -194,7 +194,9 @@ int mmDisplay::Open(uint16_t Width, uint16_t Height) {
     return 0;
 }
 
-void mmDisplay::Close() { deinitEgl(); }
+void mmDisplay::Close() {
+    deinitEgl();
+}
 
 bool mmDisplay::RenderScene() {
     glViewport(0, 0, WIDTH, HEIGHT);
@@ -205,9 +207,10 @@ bool mmDisplay::RenderScene() {
     glBindVertexArray(VAO);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, s_tex);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     eglSwapBuffers(s_display, s_surface);
+
     return true;
 }
 
