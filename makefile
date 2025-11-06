@@ -3,123 +3,75 @@ $(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>/de
 endif
 
 TOPDIR ?= $(CURDIR)
- 
+
 include $(DEVKITPRO)/libnx/switch_rules
 
-export BUILD_EXEFS_SRC := build/exefs
-
-APP_TITLE := kinx
+APP_TITLE       := kinx
 APP_DESCRIPTION := kinx
-APP_AUTHOR := MVG and DcNigma
-APP_VERSION := 1.0.0
-ICON := logo2.jpg
+APP_AUTHOR      := MVG and DcNigma
+APP_VERSION     := 1.0.0
+ICON            := logo2.jpg
+OUTPUT          := kinx
+BINDIR          := release
+BUILD           := build
 
-WINDRES   = windres.exe
-OBJ       = obj/global.o obj/2100dasm.o obj/adsp2100.o obj/iMemory.o obj/iMemoryOps.o obj/iBranchOps.o obj/iCPU.o obj/iFPOps.o obj/iATA.o obj/iMain.o obj/hleDSP.o obj/hleMain.o obj/iRom.o obj/EmuObject1.o obj/ki.o obj/iGeneralOps.o obj/mmDisplay.o obj/mmInputDevice.o
-LINKOBJ   = $(OBJ)
-LIBS      = -specs=$(DEVKITPRO)/libnx/switch.specs -g -march=armv8-a -mtune=cortex-a57 -mtp=soft -fPIE -mcpu=cortex-a57+crc+fp+simd -L$(DEVKITPRO)/libnx/lib -L$(DEVKITPRO)/portlibs/switch/lib -lglad -lEGL -lglapi -ldrm_nouveau -lnx
-INCS      = -I"src/main" -I$(DEVKITPRO)/libnx/include -I$(DEVKITPRO)/portlibs/switch/include
-CXXINCS   = $(INCS)
-BIN       = release/kinx.elf
-BUILD	  =	build
-BINDIR	  = release
-DEFINES   = -D__SWITCH__
-CXXFLAGS  = $(CXXINCS) $(DEFINES) -march=armv8-a -mcpu=cortex-a57+crc+fp+simd -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
-CFLAGS    = $(INCS) $(DEFINES)    -march=armv8-a -mcpu=cortex-a57+crc+fp+simd -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
-RM        = rm -f
-LINK      = aarch64-none-elf-g++ 
-CPP		  = aarch64-none-elf-g++
-OUTPUT    = kinx
+# Tools
+LINK  := aarch64-none-elf-g++
+CPP   := aarch64-none-elf-g++
+RM    := rm -f
 
-ifeq ($(strip $(ICON)),)
-	icons := $(wildcard *.jpg)
-	ifneq (,$(findstring $(TARGET).jpg,$(icons)))
-		export APP_ICON := $(TOPDIR)/$(TARGET).jpg
-	else
-		ifneq (,$(findstring icon.jpg,$(icons)))
-			export APP_ICON := $(TOPDIR)/icon.jpg
-		endif
-	endif
-else
-	export APP_ICON := $(TOPDIR)/$(ICON)
-endif
+# Compiler/Linker flags
+DEFINES  := -D__SWITCH__
+INCS     := -I"src/main" -I$(DEVKITPRO)/libnx/include -I$(DEVKITPRO)/portlibs/switch/include
+CXXFLAGS := $(INCS) $(DEFINES) -march=armv8-a -mcpu=cortex-a57+crc+fp+simd \
+            -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections \
+            -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
+LIBS     := -specs=$(DEVKITPRO)/libnx/switch.specs -g -march=armv8-a -mtune=cortex-a57 \
+            -mtp=soft -fPIE -mcpu=cortex-a57+crc+fp+simd \
+            -L$(DEVKITPRO)/libnx/lib -L$(DEVKITPRO)/portlibs/switch/lib \
+            -lglad -lEGL -lglapi -ldrm_nouveau -lnx
 
-ifeq ($(strip $(NO_ICON)),)
-	export NROFLAGS += --icon=$(APP_ICON)
-endif
+# Source files
+SRC := global.cpp 2100dasm.cpp adsp2100.cpp iMemory.cpp iMemoryOps.cpp \
+       iBranchOps.cpp iCPU.cpp iFPOps.cpp iATA.cpp iMain.cpp hleDSP.cpp \
+       hleMain.cpp iRom.cpp EmuObject1.cpp ki.cpp iGeneralOps.cpp mmDisplay.cpp mmInputDevice.cpp
 
+OBJ := $(patsubst %.cpp,obj/%.o,$(SRC))
+
+# NACP
 ifeq ($(strip $(NO_NACP)),)
-	export NROFLAGS += --nacp=$(BINDIR)/$(OUTPUT).nacp
+NACP := $(BINDIR)/$(OUTPUT).nacp
+else
+NACP :=
 endif
 
-ifneq ($(APP_TITLEID),)
-	export NACPFLAGS += --titleid=$(APP_TITLEID)
+# NRO icon
+ifeq ($(strip $(ICON)),)
+  ICON_PATH :=
+else
+  ICON_PATH := --icon=$(TOPDIR)/$(ICON)
 endif
 
-ifneq ($(ROMFS),)
-	export NROFLAGS += --romfsdir=$(CURDIR)/$(ROMFS)
-endif
+.PHONY: all clean
 
-.PHONY: all all-before all-after clean clean-custom
-all: all-before $(BIN) all-after
+all: $(BINDIR)/$(OUTPUT).nro
 
-clean: clean-custom
-	$(RM) $(OBJ) $(BIN)
+# Ensure release folder exists
+$(BINDIR):
+	mkdir -p $(BINDIR)
 
-$(BIN): $(OBJ)
-	$(LINK) $(LINKOBJ) -o $(BIN) $(LIBS)
+# Compile sources
+obj/%.o: %.cpp | $(BINDIR)
+	$(CPP) -c $< -o $@ $(CXXFLAGS)
 
-# Compile each source
-obj/global.o: global.cpp
-	$(CPP) -c global.cpp -o obj/global.o $(CXXFLAGS)
+# Link ELF
+$(BINDIR)/$(OUTPUT).elf: $(OBJ) | $(BINDIR)
+	$(LINK) $^ -o $@ $(LIBS)
 
-obj/2100dasm.o: 2100dasm.cpp
-	$(CPP) -c 2100dasm.cpp -o obj/2100dasm.o $(CXXFLAGS)
+# Build NRO from ELF
+$(BINDIR)/$(OUTPUT).nro: $(BINDIR)/$(OUTPUT).elf $(NACP) | $(BINDIR)
+	$(DEVKITPRO)/tools/bin/elf2nro $(BINDIR)/$(OUTPUT).elf $@ $(NACP) $(ICON_PATH)
 
-obj/adsp2100.o: adsp2100.cpp
-	$(CPP) -c adsp2100.cpp -o obj/adsp2100.o $(CXXFLAGS)
-
-obj/iMemory.o: iMemory.cpp
-	$(CPP) -c iMemory.cpp -o obj/iMemory.o $(CXXFLAGS)
-
-obj/iMemoryOps.o: iMemoryOps.cpp
-	$(CPP) -c iMemoryOps.cpp -o obj/iMemoryOps.o $(CXXFLAGS)
-
-obj/iBranchOps.o: iBranchOps.cpp
-	$(CPP) -c iBranchOps.cpp -o obj/iBranchOps.o $(CXXFLAGS)
-
-obj/iCPU.o: iCPU.cpp
-	$(CPP) -c iCPU.cpp -o obj/iCPU.o $(CXXFLAGS)
-
-obj/iFPOps.o: iFPOps.cpp
-	$(CPP) -c iFPOps.cpp -o obj/iFPOps.o $(CXXFLAGS)
-
-obj/iATA.o: iATA.cpp
-	$(CPP) -c iATA.cpp -o obj/iATA.o $(CXXFLAGS)
-
-obj/iMain.o: iMain.cpp
-	$(CPP) -c iMain.cpp -o obj/iMain.o $(CXXFLAGS)
-
-obj/hleDSP.o: hleDSP.cpp
-	$(CPP) -c hleDSP.cpp -o obj/hleDSP.o $(CXXFLAGS)
-
-obj/hleMain.o: hleMain.cpp
-	$(CPP) -c hleMain.cpp -o obj/hleMain.o $(CXXFLAGS)
-
-obj/iRom.o: iRom.cpp
-	$(CPP) -c iRom.cpp -o obj/iRom.o $(CXXFLAGS)
-
-obj/EmuObject1.o: EmuObject1.cpp
-	$(CPP) -c EmuObject1.cpp -o obj/EmuObject1.o $(CXXFLAGS)
-
-obj/ki.o: ki.cpp
-	$(CPP) -c ki.cpp -o obj/ki.o $(CXXFLAGS)
-
-obj/iGeneralOps.o: iGeneralOps.cpp
-	$(CPP) -c iGeneralOps.cpp -o obj/iGeneralOps.o $(CXXFLAGS)
-
-obj/mmDisplay.o: mmDisplay.cpp
-	$(CPP) -c mmDisplay.cpp -o obj/mmDisplay.o $(CXXFLAGS)
-
-obj/mmInputDevice.o: mmInputDevice.cpp
-	$(CPP) -c mmInputDevice.cpp -o obj/mmInputDevice.o $(CXXFLAGS)
+# Clean
+clean:
+	$(RM) $(OBJ) $(BINDIR)/$(OUTPUT).elf $(BINDIR)/$(OUTPUT).nro
