@@ -1,53 +1,62 @@
-# --------------------------------------------------
-# u64emu Makefile for Nintendo Switch (libnx)
-# --------------------------------------------------
+# Makefile for u64emu on Switch
 
-# Compiler / Linker
-CC := aarch64-none-elf-g++
+# Compiler & tools
 CXX := aarch64-none-elf-g++
-LD := aarch64-none-elf-g++
+CC   := aarch64-none-elf-gcc
+RM   := rm -rf
 
 # Directories
-SRC_DIR := src
+SRC_DIR := src/main
 OBJ_DIR := obj
-BUILD_DIR := release
-
-# Flags
-CXXFLAGS := -I$(SRC_DIR) -I/opt/devkitpro/libnx/include -I/opt/devkitpro/portlibs/switch/include \
-    -D__SWITCH__ -march=armv8-a -mcpu=cortex-a57+crc+fp+simd \
-    -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections \
-    -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
-
-LDFLAGS := -specs=/opt/devkitpro/libnx/switch.specs \
-    -L/opt/devkitpro/libnx/lib -L/opt/devkitpro/portlibs/switch/lib \
-    -lglad -lEGL -lglapi -ldrm_nouveau -lnx
-
-# Sources & Objects
-SRCS := $(wildcard $(SRC_DIR)/*.cpp)
-OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))
+BIN_DIR := release
 
 # Target
-TARGET := $(BUILD_DIR)/kinx.elf
+TARGET := $(BIN_DIR)/kinx.elf
 
-# --------------------------------------------------
-# Rules
-# --------------------------------------------------
+# Flags
+CXXFLAGS := -I"$(SRC_DIR)" \
+            -I/opt/devkitpro/libnx/include \
+            -I/opt/devkitpro/portlibs/switch/include \
+            -D__SWITCH__ \
+            -march=armv8-a \
+            -mcpu=cortex-a57+crc+fp+simd \
+            -fno-strict-aliasing \
+            -fomit-frame-pointer \
+            -ffunction-sections \
+            -fno-rtti \
+            -fno-exceptions \
+            -mtp=soft \
+            -fPIE \
+            -O3 \
+            -w
 
-all: $(OBJ_DIR) $(BUILD_DIR) $(TARGET)
+LDFLAGS := -specs=/opt/devkitpro/libnx/switch.specs \
+           -L/opt/devkitpro/libnx/lib \
+           -L/opt/devkitpro/portlibs/switch/lib \
+           -lglad -lEGL -lglapi -lnx \
+           -fPIE
 
-$(OBJ_DIR):
-	mkdir -p $(OBJ_DIR)
+# Source files
+SRCS := $(wildcard $(SRC_DIR)/*.cpp)
 
-$(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
+# Object files
+OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))
 
-# Compile C++ files
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
-	$(CXX) -c $< -o $@ $(CXXFLAGS)
+# Default target
+all: $(TARGET)
 
-# Link
+# Build target
 $(TARGET): $(OBJS)
+	@mkdir -p $(BIN_DIR)
 	$(CXX) $(OBJS) -o $@ $(LDFLAGS)
 
+# Compile objects
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+	@mkdir -p $(OBJ_DIR)
+	$(CXX) -c $< -o $@ $(CXXFLAGS)
+
+# Clean
 clean:
-	rm -rf $(OBJ_DIR)/*.o $(TARGET)
+	$(RM) $(OBJ_DIR)/*.o $(TARGET)
+
+.PHONY: all clean
