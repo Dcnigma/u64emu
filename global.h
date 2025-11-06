@@ -52,4 +52,6 @@ extern unsigned char SRAM[SRAM_SIZE];
 // ----- Timing -----
 extern float getTime();
 
+extern int gRomSet;
+
 #endif // GLOBAL_H
