@@ -27,13 +27,11 @@ mmDisplay theDisplay;
 // Vertex and index data
 //-----------------------------------------------------------------------------
 static const float vertices[] = {
-    // positions       // colors        // tex coords
      1.0f,  1.0f, 0.0f, 1.0f,0.0f,0.0f, 1.0f,0.0f,
      1.0f, -1.0f, 0.0f, 0.0f,1.0f,0.0f, 1.0f,1.0f,
     -1.0f, -1.0f, 0.0f, 0.0f,0.0f,1.0f, 0.0f,1.0f,
     -1.0f,  1.0f, 0.0f, 1.0f,1.0f,0.0f, 0.0f,0.0f
 };
-
 static const unsigned int indices[] = { 0, 1, 3, 1, 2, 3 };
 
 // Shader sources
@@ -70,21 +68,9 @@ void main()
 )text";
 
 //-----------------------------------------------------------------------------
-// mmDisplay implementation
+// Private helper function (not a class member)
 //-----------------------------------------------------------------------------
-mmDisplay::mmDisplay() {
-    IntermediateBuffer = (WORD*)malloc(320 * 240 * sizeof(WORD));
-    nwindowSetDimensions(nwindowGetDefault(), WIDTH, HEIGHT);
-}
-
-mmDisplay::~mmDisplay() {
-    if (IntermediateBuffer) free(IntermediateBuffer);
-}
-
-//-----------------------------------------------------------------------------
-// Private: compile a shader
-//-----------------------------------------------------------------------------
-GLuint mmDisplay::createAndCompileShader(GLenum type, const char* source) {
+static GLuint createAndCompileShader(GLenum type, const char* source) {
     GLuint handle = glCreateShader(type);
     glShaderSource(handle, 1, &source, NULL);
     glCompileShader(handle);
@@ -101,7 +87,7 @@ GLuint mmDisplay::createAndCompileShader(GLenum type, const char* source) {
 }
 
 //-----------------------------------------------------------------------------
-// Private: init and deinit EGL
+// Private EGL helpers
 //-----------------------------------------------------------------------------
 bool mmDisplay::initEgl() {
     s_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -154,6 +140,15 @@ void mmDisplay::deinitEgl() {
 //-----------------------------------------------------------------------------
 // Public methods
 //-----------------------------------------------------------------------------
+mmDisplay::mmDisplay() {
+    IntermediateBuffer = (WORD*)malloc(320 * 240 * sizeof(WORD));
+    nwindowSetDimensions(nwindowGetDefault(), WIDTH, HEIGHT);
+}
+
+mmDisplay::~mmDisplay() {
+    if (IntermediateBuffer) free(IntermediateBuffer);
+}
+
 int mmDisplay::Open(uint16_t Width, uint16_t Height) {
     if (!initEgl()) return -1;
 
@@ -221,7 +216,6 @@ void mmDisplay::BeginScene() {}
 void mmDisplay::EndScene() {}
 
 void mmDisplay::UpdateScreenBuffer(unsigned char* source) {
-    // Example: fill red
     for (int i = 0; i < 320 * 240; i++) IntermediateBuffer[i] = 0xF800;
 
     glBindTexture(GL_TEXTURE_2D, s_tex);
