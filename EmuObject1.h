@@ -3,29 +3,31 @@
 
 #include "global.h"
 #include "mmInputDevice.h"
-#include <cstdio>
-#include <cstring>
 
-// Forward declaration
-class mmInputDevice;
-
-class CEmuObject
-{
+class CEmuObject {
 public:
     CEmuObject();
     ~CEmuObject();
-    // … existing declarations …
-    void UpdateAudio(unsigned int size);
-    bool m_Debug;
+
+    // Core functions
     void Init();
-    void StopEmulation();
-    bool UpdateDisplay();
     void Emulate(const char* filename);
-    uint32_t ScanInput();
+    bool UpdateDisplay();
+    void StopEmulation();
+    void UpdateAudio(unsigned int size);
 
-    char m_FileName[256];
-    mmInputDevice* m_InputDevice;
+    // Optional game functions
+    void LoadGame(const char* filename);
+    void SaveGame(const char* filename);
+    void Reset();
+
+    // Members
+    bool m_Debug;                   // debug flag
+    char m_FileName[256];           // loaded ROM filename
+    mmInputDevice* m_InputDevice;   // input device pointer
+    bool m_IsRunning;               // emulation running flag
+    DWORD m_CycleCount;             // CPU cycles
+    int m_FrameCount;               // frame counter
 };
-
 
 #endif // EMUOBJECT1_H
