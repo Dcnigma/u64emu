@@ -8,9 +8,9 @@
 
 CEmuObject::CEmuObject()
 {
-    memset(m_FileName, 0, sizeof(m_FileName));
+    m_FileName[0] = '\0';
     m_InputDevice = nullptr;
-    m_Debug = false;                   // initialize debug flag    
+    m_Debug = false;                   // initialize debug flag
 }
 
 CEmuObject::~CEmuObject()
