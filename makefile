@@ -1,52 +1,79 @@
-#--------------------------
-# U64Emu Switch Makefile
-#--------------------------
+# -------------------------
+# Makefile for u64emu on Switch
+# -------------------------
 
-ifeq ($(strip $(DEVKITPRO)),)
-$(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>/devkitpro")
-endif
+# Compiler & tools
+CC      := aarch64-none-elf-g++
+LD      := aarch64-none-elf-g++
+AR      := aarch64-none-elf-ar
+OBJCOPY := aarch64-none-elf-objcopy
 
-TOPDIR ?= $(CURDIR)
-include $(DEVKITPRO)/libnx/switch_rules
+# Directories
+SRC_DIR := src/main
+OBJ_DIR := obj
+BIN_DIR := release
 
-#--------------------------
-# Output & directories
-#--------------------------
-APP_TITLE := kinx
-APP_AUTHOR := MVG
-APP_VERSION := 1.0.0
-ICON := logo2.jpg
+# Target
+TARGET := $(BIN_DIR)/kinx.elf
 
-OBJ       = obj/2100dasm.o obj/adsp2100.o obj/iMemory.o obj/iMemoryOps.o obj/iBranchOps.o obj/iCPU.o \
-            obj/iFPOps.o obj/iATA.o obj/iMain.o obj/hleDSP.o obj/hleMain.o obj/iRom.o obj/EmuObject1.o \
-            obj/ki.o obj/iGeneralOps.o obj/mmDisplay.o obj/mmInputDevice.o
+# Source files
+SRCS := $(SRC_DIR)/2100dasm.cpp \
+        $(SRC_DIR)/adsp2100.cpp \
+        $(SRC_DIR)/iMemory.cpp \
+        $(SRC_DIR)/iMemoryOps.cpp \
+        $(SRC_DIR)/iBranchOps.cpp \
+        $(SRC_DIR)/iCPU.cpp \
+        $(SRC_DIR)/iFPOps.cpp \
+        $(SRC_DIR)/iATA.cpp \
+        $(SRC_DIR)/iMain.cpp \
+        $(SRC_DIR)/hleDSP.cpp \
+        $(SRC_DIR)/hleMain.cpp \
+        $(SRC_DIR)/iRom.cpp \
+        $(SRC_DIR)/EmuObject1.cpp \
+        $(SRC_DIR)/ki.cpp \
+        $(SRC_DIR)/iGeneralOps.cpp \
+        $(SRC_DIR)/mmDisplay.cpp \
+        $(SRC_DIR)/mmInputDevice.cpp
 
-BIN       = release/kinx.elf
-LINK      = aarch64-none-elf-g++
-CPP       = aarch64-none-elf-g++
-CXXFLAGS  = -I"src/main" -I$(DEVKITPRO)/libnx/include -I$(DEVKITPRO)/portlibs/switch/include \
-            -D__SWITCH__ -march=armv8-a -mcpu=cortex-a57+crc+fp+simd \
-            -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections \
-            -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
-LIBS      = -specs=$(DEVKITPRO)/libnx/switch.specs \
-            -L$(DEVKITPRO)/libnx/lib -L$(DEVKITPRO)/portlibs/switch/lib \
-            -lglad -lEGL -lglapi -ldrm_nouveau -lnx
+OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))
 
-#--------------------------
-# Targets
-#--------------------------
-all: $(BIN)
+# Include paths
+INCLUDES := -I"$(SRC_DIR)" \
+            -I/opt/devkitpro/libnx/include \
+            -I/opt/devkitpro/portlibs/switch/include
 
+# Compiler flags
+CFLAGS := -O3 -w -std=c++17 \
+          -march=armv8-a -mcpu=cortex-a57+crc+fp+simd \
+          -fno-strict-aliasing -fomit-frame-pointer \
+          -ffunction-sections -fno-rtti -fno-exceptions \
+          $(INCLUDES) -D__SWITCH__
+
+# Linker flags
+LDFLAGS := -specs=/opt/devkitpro/libnx/switch.specs \
+           -L/opt/devkitpro/libnx/lib \
+           -L/opt/devkitpro/portlibs/switch/lib \
+           -lglad -lEGL -lglapi -ldrm_nouveau -lnx
+
+# -------------------------
+# Rules
+# -------------------------
+
+# Default target
+all: $(TARGET)
+
+# Link
+$(TARGET): $(OBJS)
+	@mkdir -p $(BIN_DIR)
+	$(LD) $(OBJS) -o $@ $(LDFLAGS)
+
+# Compile
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+	@mkdir -p $(OBJ_DIR)
+	$(CC) -c $< -o $@ $(CFLAGS)
+
+# Clean
 clean:
-	rm -rf obj/* release/*
+	rm -rf $(OBJ_DIR) $(BIN_DIR)
 
-$(BIN): $(OBJ)
-	@mkdir -p release
-	$(LINK) $(OBJ) -o $(BIN) $(LIBS)
-
-#--------------------------
-# Object compilation rules
-#--------------------------
-obj/%.o: %.cpp
-	@mkdir -p $(dir $@)
-	$(CPP) -c $< -o $@ $(CXXFLAGS)
+.PHONY: all clean
