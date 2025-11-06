@@ -1,9 +1,9 @@
 #include "global.h"
 
-// Definition of global SRAM
+// Define the SRAM buffer
 unsigned char SRAM[SRAM_SIZE];
 
-// example getTime implementation
+// Example getTime
 #include <time.h>
 float getTime() {
     struct timespec ts;
