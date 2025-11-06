@@ -20,6 +20,7 @@ public:
     void EndScene();
 
 private:
+    WORD* IntermediateBuffer;
     static EGLDisplay s_display;
     static EGLContext s_context;
     static EGLSurface s_surface;
