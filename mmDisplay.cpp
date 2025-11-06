@@ -49,7 +49,10 @@ out vec4 FragColor;
 in vec3 ourColor;
 in vec2 TexCoord;
 uniform sampler2D texture1;
-void main() { FragColor = vec4(ourColor,1.0); }
+
+void main() {
+    FragColor = texture(texture1, TexCoord);
+}
 )text";
 
 //-----------------------------------------------------------------------------
@@ -92,7 +95,7 @@ bool initEgl() {
         EGL_RED_SIZE,1, EGL_GREEN_SIZE,1, EGL_BLUE_SIZE,1, EGL_NONE
     };
     eglChooseConfig(s_display, framebufferAttributeList, &config,1,&numConfigs);
-    s_surface = eglCreateWindowSurface(s_display, config, (char*)"", NULL);
+    s_surface = eglCreateWindowSurface(s_display, config, (NativeWindowType)nwindowGetDefault(), NULL);
     if (!s_surface) return false;
 
     static const EGLint contextAttributeList[] = {
@@ -180,7 +183,7 @@ void mmDisplay::EndScene() {}
 void mmDisplay::UpdateScreenBuffer(unsigned char* source) {
     // For now just fill buffer with red
     for (int i=0;i<320*240;i++) IntermediateBuffer[i]=0xF800;
-    glTexImage2D(GL_TEXTURE_2D,0,GL_RGB565,320,240,0,GL_RGB,GL_UNSIGNED_SHORT_5_6_5,IntermediateBuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 320, 240, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, IntermediateBuffer);
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
     eglSwapBuffers(s_display,s_surface);
