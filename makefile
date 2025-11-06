@@ -1,10 +1,8 @@
-# Switch Homebrew Makefile for u64emu
+# Simple recursive Makefile for u64emu Switch build
 
 # Compiler and tools
-CC = aarch64-none-elf-g++
 CXX = aarch64-none-elf-g++
-AR = aarch64-none-elf-ar
-RM = rm -f
+RM = rm -rf
 MKDIR = mkdir -p
 
 # Directories
@@ -16,11 +14,16 @@ BIN_DIR = release
 DEVKITPRO ?= /opt/devkitpro
 DEVKITA64 ?= $(DEVKITPRO)/devkitA64
 LIBNX_DIR ?= $(DEVKITPRO)/libnx
-CFLAGS = -D__SWITCH__ -march=armv8-a -mcpu=cortex-a57+crc+fp+simd -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
-LDFLAGS = -specs=$(LIBNX_DIR)/switch.specs -L$(LIBNX_DIR)/lib -L$(DEVKITPRO)/portlibs/switch/lib -lglad -lEGL -lglapi -ldrm_nouveau -lnx
+CXXFLAGS = -D__SWITCH__ -march=armv8-a -mcpu=cortex-a57+crc+fp+simd \
+           -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections \
+           -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w \
+           -I$(SRC_DIR) -I$(LIBNX_DIR)/include -I$(DEVKITPRO)/portlibs/switch/include
+LDFLAGS = -specs=$(LIBNX_DIR)/switch.specs \
+          -L$(LIBNX_DIR)/lib -L$(DEVKITPRO)/portlibs/switch/lib \
+          -lglad -lEGL -lglapi -ldrm_nouveau -lnx
 
-# Source and object files
-SOURCES := $(wildcard $(SRC_DIR)/*.cpp)
+# Recursive search for source files
+SOURCES := $(shell find $(SRC_DIR) -name '*.cpp')
 OBJECTS := $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SOURCES))
 
 # Output binary
@@ -36,12 +39,11 @@ $(TARGET): $(OBJECTS)
 
 # Compile C++ files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
-	$(MKDIR) $(OBJ_DIR)
-	$(CXX) -c $< -o $@ $(CFLAGS) -I$(SRC_DIR) -I$(LIBNX_DIR)/include -I$(DEVKITPRO)/portlibs/switch/include
+	$(MKDIR) $(dir $@)
+	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
 # Clean
 clean:
-	$(RM) $(OBJ_DIR)/*.o
-	$(RM) $(TARGET)
+	$(RM) $(OBJ_DIR) $(BIN_DIR)
 
 .PHONY: all clean
