@@ -18,14 +18,9 @@ void BootKI2(void);
 bool bQuitSignal;
 int gameisrunning = 0;
 
-// Correct type to match the extern in global.h
-int gRomSet;  // <--- not uint32_t
-
-// Global ROM set / HLE flag
-extern "C" {
-    uint32_t gRomSet;
-    uint32_t gAllowHLE;
-}
+// Correct global variables matching global.h
+int gRomSet;      // ROM set flag
+int gAllowHLE;    // HLE flag
 
 CKIApp::CKIApp() { /* All init happens in InitInstance */ }
 
@@ -95,7 +90,6 @@ int main()
     printf("Console initialized\n");
     fflush(stdout);
 
-    // Optional overclock
 #ifdef NXOVERCLOCK
     if (R_SUCCEEDED(pcvInitialize()))
     {
@@ -122,15 +116,6 @@ int main()
     consoleExit(NULL);
     return 0;
 }
-
-/////////////////////////////////////////////////////////////////////////////
-// Stub dialog class
-
-//class CKIDlg {
-//public:
-//    bool DestroyWindow() { return true; }
-//    void ShowWindow(int nCmd) { /* do nothing */ }
-//};
 
 /////////////////////////////////////////////////////////////////////////////
 // Boot functions
@@ -179,7 +164,6 @@ void BootKI1(void)
     while (!bQuitSignal)
     {
         e.UpdateDisplay();
-        // Allow Switch OS to handle events
         svcSleepThread(16000); // ~16ms delay for 60fps
     }
 
