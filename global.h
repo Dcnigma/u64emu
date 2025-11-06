@@ -10,15 +10,21 @@
 #include <cstring>
 using namespace std;
 
-// typedefs...
+// Type definitions
 typedef unsigned char BYTE;
 typedef unsigned short WORD;
 typedef unsigned int DWORD;
 typedef uint64_t QWORD;
-// ...other typedefs
 
-extern unsigned char SRAM[SRAM_SIZE]; // single declaration
+// Memory macros
+#define SafeFree(ptr) if(ptr!=NULL) { free(ptr); ptr=NULL; }
+#define SafeDelete(ptr) if(ptr!=NULL) { delete ptr; ptr=NULL; }
+#define SafeRelease(ptr) if(ptr!=NULL) { ptr->Release();  }
 
-extern float getTime();  // leave as float if your timing code uses float
+// Global SRAM declaration
+extern unsigned char SRAM[SRAM_SIZE];
+
+// Timing function
+extern float getTime();
 
 #endif // GLOBAL1_H
