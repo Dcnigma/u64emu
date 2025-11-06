@@ -12,7 +12,7 @@ export BUILD_EXEFS_SRC := build/exefs
 
 APP_TITLE := kinx
 APP_DESCRIPTION := kinx
-APP_AUTHOR := MVG
+APP_AUTHOR := MVG and DcNigma
 APP_VERSION := 1.0.0
 ICON := logo2.jpg
 
