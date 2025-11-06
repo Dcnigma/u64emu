@@ -14,13 +14,15 @@
 //-----------------------------------------------------------------------------
 // EGL/OpenGL
 //-----------------------------------------------------------------------------
-static EGLDisplay s_display = EGL_NO_DISPLAY;
-static EGLContext s_context = EGL_NO_CONTEXT;
-static EGLSurface s_surface = EGL_NO_SURFACE;
-
-static GLuint s_program;
-static GLuint VBO, VAO, EBO;
-static GLuint s_tex;
+// Define static members
+EGLDisplay mmDisplay::s_display = EGL_NO_DISPLAY;
+EGLContext mmDisplay::s_context = EGL_NO_CONTEXT;
+EGLSurface mmDisplay::s_surface = EGL_NO_SURFACE;
+GLuint mmDisplay::s_program = 0;
+GLuint mmDisplay::VBO = 0;
+GLuint mmDisplay::VAO = 0;
+GLuint mmDisplay::EBO = 0;
+GLuint mmDisplay::s_tex = 0;
 
 static const float vertices[] = {
     // positions       // colors        // tex coords
