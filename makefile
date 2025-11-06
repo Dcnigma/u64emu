@@ -1,58 +1,47 @@
-# ----------------------
-# U64EMU Makefile for Switch (LibNX)
-# ----------------------
+# Switch Homebrew Makefile for u64emu
 
 # Compiler and tools
-CC      := aarch64-none-elf-g++
-CXX     := aarch64-none-elf-g++
-LD      := aarch64-none-elf-g++
-AR      := aarch64-none-elf-ar
-RM      := rm -f
+CC = aarch64-none-elf-g++
+CXX = aarch64-none-elf-g++
+AR = aarch64-none-elf-ar
+RM = rm -f
+MKDIR = mkdir -p
 
-# Project directories
-SRC_DIR := src/main
-OBJ_DIR := obj
-BIN_DIR := release
+# Directories
+SRC_DIR = src
+OBJ_DIR = obj
+BIN_DIR = release
 
-# Switch/LibNX includes and libs
-INC     := -I$(SRC_DIR) \
-           -I/opt/devkitpro/libnx/include \
-           -I/opt/devkitpro/portlibs/switch/include
-LIBS    := -L/opt/devkitpro/libnx/lib \
-           -L/opt/devkitpro/portlibs/switch/lib \
-           -lglad -lEGL -lglapi -ldrm_nouveau -lnx
+# Switch/LibNX settings
+DEVKITPRO ?= /opt/devkitpro
+DEVKITA64 ?= $(DEVKITPRO)/devkitA64
+LIBNX_DIR ?= $(DEVKITPRO)/libnx
+CFLAGS = -D__SWITCH__ -march=armv8-a -mcpu=cortex-a57+crc+fp+simd -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
+LDFLAGS = -specs=$(LIBNX_DIR)/switch.specs -L$(LIBNX_DIR)/lib -L$(DEVKITPRO)/portlibs/switch/lib -lglad -lEGL -lglapi -ldrm_nouveau -lnx
 
-# Compiler flags
-CFLAGS  := -D__SWITCH__ -march=armv8-a -mcpu=cortex-a57+crc+fp+simd \
-           -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections \
-           -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
-
-# Source files
-SRCS := $(wildcard $(SRC_DIR)/*.cpp)
-OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))
+# Source and object files
+SOURCES := $(wildcard $(SRC_DIR)/*.cpp)
+OBJECTS := $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SOURCES))
 
 # Output binary
-TARGET := $(BIN_DIR)/kinx.elf
+TARGET = $(BIN_DIR)/kinx.elf
 
 # Default target
 all: $(TARGET)
 
-# Compile
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
-	$(CXX) $(CFLAGS) $(INC) -c $< -o $@
-
 # Link
-$(TARGET): $(OBJS) | $(BIN_DIR)
-	$(LD) $(OBJS) -o $(TARGET) -specs=/opt/devkitpro/libnx/switch.specs $(CFLAGS) $(LIBS)
+$(TARGET): $(OBJECTS)
+	$(MKDIR) $(BIN_DIR)
+	$(CXX) $(OBJECTS) -o $@ $(LDFLAGS)
 
-# Directories
-$(OBJ_DIR):
-	mkdir -p $(OBJ_DIR)
-
-$(BIN_DIR):
-	mkdir -p $(BIN_DIR)
+# Compile C++ files
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+	$(MKDIR) $(OBJ_DIR)
+	$(CXX) -c $< -o $@ $(CFLAGS) -I$(SRC_DIR) -I$(LIBNX_DIR)/include -I$(DEVKITPRO)/portlibs/switch/include
 
 # Clean
 clean:
 	$(RM) $(OBJ_DIR)/*.o
 	$(RM) $(TARGET)
+
+.PHONY: all clean
