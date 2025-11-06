@@ -1,8 +1,5 @@
 #include "mmDisplay.h"
-#include "global.h"
-#include "ki.h"
-
-#include <switch.h>
+#include "switch.h"
 #include <EGL/egl.h>
 #include <glad/glad.h>
 #include <stdio.h>
@@ -12,7 +9,7 @@
 #define HEIGHT 720
 
 //-----------------------------------------------------------------------------
-// EGL/OpenGL static members
+// Define static members
 //-----------------------------------------------------------------------------
 EGLDisplay mmDisplay::s_display = EGL_NO_DISPLAY;
 EGLContext mmDisplay::s_context = EGL_NO_CONTEXT;
@@ -23,8 +20,11 @@ GLuint mmDisplay::VAO = 0;
 GLuint mmDisplay::EBO = 0;
 GLuint mmDisplay::s_tex = 0;
 
+// Declare global display object
+mmDisplay theDisplay;
+
 //-----------------------------------------------------------------------------
-// Vertex and fragment shader data
+// Vertex and index data
 //-----------------------------------------------------------------------------
 static const float vertices[] = {
     // positions       // colors        // tex coords
@@ -36,6 +36,7 @@ static const float vertices[] = {
 
 static const unsigned int indices[] = { 0, 1, 3, 1, 2, 3 };
 
+// Shader sources
 static const char* vertexShaderSource = R"text(
 #version 330 core
 layout(location = 0) in vec3 aPos;
@@ -69,11 +70,6 @@ void main()
 )text";
 
 //-----------------------------------------------------------------------------
-// Global display object
-//-----------------------------------------------------------------------------
-mmDisplay theDisplay;
-
-//-----------------------------------------------------------------------------
 // mmDisplay implementation
 //-----------------------------------------------------------------------------
 mmDisplay::mmDisplay() {
@@ -86,7 +82,26 @@ mmDisplay::~mmDisplay() {
 }
 
 //-----------------------------------------------------------------------------
-// Private methods for EGL initialization
+// Private: compile a shader
+//-----------------------------------------------------------------------------
+GLuint mmDisplay::createAndCompileShader(GLenum type, const char* source) {
+    GLuint handle = glCreateShader(type);
+    glShaderSource(handle, 1, &source, NULL);
+    glCompileShader(handle);
+
+    GLint success;
+    glGetShaderiv(handle, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        char buf[512];
+        glGetShaderInfoLog(handle, sizeof(buf), NULL, buf);
+        printf("Shader compile error: %s\n", buf);
+        return 0;
+    }
+    return handle;
+}
+
+//-----------------------------------------------------------------------------
+// Private: init and deinit EGL
 //-----------------------------------------------------------------------------
 bool mmDisplay::initEgl() {
     s_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -123,33 +138,17 @@ bool mmDisplay::initEgl() {
 
 void mmDisplay::deinitEgl() {
     if (s_display != EGL_NO_DISPLAY) {
-        if (s_context) eglDestroyContext(s_display, s_context);
-        if (s_surface) eglDestroySurface(s_display, s_surface);
+        if (s_context) {
+            eglDestroyContext(s_display, s_context);
+            s_context = EGL_NO_CONTEXT;
+        }
+        if (s_surface) {
+            eglDestroySurface(s_display, s_surface);
+            s_surface = EGL_NO_SURFACE;
+        }
         eglTerminate(s_display);
-
         s_display = EGL_NO_DISPLAY;
-        s_context = EGL_NO_CONTEXT;
-        s_surface = EGL_NO_SURFACE;
     }
-}
-
-//-----------------------------------------------------------------------------
-// Shader helper
-//-----------------------------------------------------------------------------
-static GLuint createAndCompileShader(GLenum type, const char* source) {
-    GLuint handle = glCreateShader(type);
-    glShaderSource(handle, 1, &source, NULL);
-    glCompileShader(handle);
-
-    GLint success;
-    glGetShaderiv(handle, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        char buf[512];
-        glGetShaderInfoLog(handle, sizeof(buf), NULL, buf);
-        printf("Shader compile error: %s\n", buf);
-        return 0;
-    }
-    return handle;
 }
 
 //-----------------------------------------------------------------------------
@@ -211,10 +210,9 @@ bool mmDisplay::RenderScene() {
     glBindVertexArray(VAO);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, s_tex);
-
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    eglSwapBuffers(s_display, s_surface);
 
+    eglSwapBuffers(s_display, s_surface);
     return true;
 }
 
@@ -223,6 +221,7 @@ void mmDisplay::BeginScene() {}
 void mmDisplay::EndScene() {}
 
 void mmDisplay::UpdateScreenBuffer(unsigned char* source) {
+    // Example: fill red
     for (int i = 0; i < 320 * 240; i++) IntermediateBuffer[i] = 0xF800;
 
     glBindTexture(GL_TEXTURE_2D, s_tex);
