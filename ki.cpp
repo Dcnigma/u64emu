@@ -1,5 +1,6 @@
 // ki.cpp : Defines the class behaviors for the application.
 //
+#include "global.h"
 #include "ki.h"
 #include <switch.h>
 #include <stdarg.h>
@@ -16,6 +17,9 @@ void BootKI2(void);
 
 bool bQuitSignal;
 int gameisrunning = 0;
+
+// Correct type to match the extern in global.h
+int gRomSet;  // <--- not uint32_t
 
 // Global ROM set / HLE flag
 extern "C" {
