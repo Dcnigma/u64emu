@@ -7,6 +7,11 @@
 extern WORD iMemToDo;
 extern WORD iMemTLBActive;
 
+#define RDRAMSIZE 8*1024*1024
+#define SRAM (m->rdRam+RDRAMSIZE)
+extern WORD iMemToDo;
+extern WORD iMemTLBActive;
+
 // ----- Core memory functions -----
 void iMemConstruct();
 void iMemDestruct();

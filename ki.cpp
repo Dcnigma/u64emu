@@ -18,10 +18,6 @@ void BootKI2(void);
 bool bQuitSignal;
 int gameisrunning = 0;
 
-// Correct global variables matching global.h
-//int gRomSet;      // ROM set flag in global.cpp
-int gAllowHLE;    // HLE flag
-
 CKIApp::CKIApp() { /* All init happens in InitInstance */ }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -35,7 +31,7 @@ bool CKIApp::InitInstance()
 {
     gAllowHLE = 0;
     gRomSet = KI2;
-    return true;
+
 }
 
 void CKIApp::LogMessage(char* fmt, ...)
@@ -80,6 +76,13 @@ void CKIApp::VectorMessage(char* fmt, ...) {}
 void CKIApp::BPMessage(char* fmt, ...) {}
 
 int CKIApp::ExitInstance() { return 0; }
+
+
+extern "C"
+{
+	DWORD gRomSet;
+	DWORD gAllowHLE;
+}
 
 /////////////////////////////////////////////////////////////////////////////
 // Main entry point

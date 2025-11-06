@@ -16,7 +16,7 @@ APP_VERSION := 1.0.0
 ICON := logo2.jpg
 
 WINDRES   = windres.exe
-OBJ       = obj/global.o obj/2100dasm.o obj/adsp2100.o obj/iMemory.o obj/iMemoryOps.o obj/iBranchOps.o obj/iCPU.o obj/iFPOps.o obj/iATA.o obj/iMain.o obj/hleDSP.o obj/hleMain.o obj/iRom.o obj/EmuObject1.o obj/ki.o obj/iGeneralOps.o obj/mmDisplay.o obj/mmInputDevice.o
+OBJ       = obj/2100dasm.o obj/adsp2100.o obj/iMemory.o obj/iMemoryOps.o obj/iBranchOps.o obj/iCPU.o obj/iFPOps.o obj/iATA.o obj/iMain.o obj/hleDSP.o obj/hleMain.o obj/iRom.o obj/EmuObject1.o obj/ki.o obj/iGeneralOps.o obj/mmDisplay.o obj/mmInputDevice.o
 LINKOBJ   = $(OBJ)
 LIBS      = -specs=$(DEVKITPRO)/libnx/switch.specs -g -march=armv8-a -mtune=cortex-a57 -mtp=soft -fPIE -mcpu=cortex-a57+crc+fp+simd -L$(DEVKITPRO)/libnx/lib -L$(DEVKITPRO)/portlibs/switch/lib -lglad -lEGL -lglapi -ldrm_nouveau -lnx
 INCS      = -I"src/main" -I$(DEVKITPRO)/libnx/include -I$(DEVKITPRO)/portlibs/switch/include
@@ -71,8 +71,6 @@ $(BIN): $(OBJ)
 	$(LINK) $(LINKOBJ) -o $(BIN) $(LIBS)
 
 # Compile each source
-obj/global.o: global.cpp
-	$(CPP) -c global.cpp -o obj/global.o $(CXXFLAGS)
 
 obj/2100dasm.o: 2100dasm.cpp
 	$(CPP) -c 2100dasm.cpp -o obj/2100dasm.o $(CXXFLAGS)

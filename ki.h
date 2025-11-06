@@ -10,6 +10,7 @@
 #define KI1 1
 #define KI2 2
 
+extern float getTime();
 /////////////////////////////////////////////////////////////////////////////
 // CKIApp
 
@@ -87,5 +88,10 @@ public:
 };
 extern bool bQuitSignal;
 extern CKIApp theApp;
+
+extern "C" {
+	extern DWORD gRomSet;
+	extern DWORD gAllowHLE;
+}
 
 #endif // KI_H_INCLUDED
