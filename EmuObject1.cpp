@@ -1,6 +1,10 @@
 #include "EmuObject1.h"
+#include "mmDisplay.h"
+
+mmDisplay theDisplay;
 
 CEmuObject::CEmuObject() {
+    theDisplay.Open(320, 240);
     m_FileName[0] = '\0';
     m_InputDevice = nullptr;
     m_Debug = false;
