@@ -29,6 +29,7 @@ INCS = -I"src/main" -I$(DEVKITPRO)/libnx/include -I$(DEVKITPRO)/portlibs/switch/
 CXXFLAGS = $(INCS) -D__SWITCH__ -march=armv8-a -mcpu=cortex-a57+crc+fp+simd \
            -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections \
            -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
+
 LINK = aarch64-none-elf-g++
 CPP  = aarch64-none-elf-g++
 BIN  = release/kinx.elf
@@ -36,55 +37,54 @@ BINDIR = release
 OUTPUT = kinx
 RM = rm -f
 
-# NRO/NACP flags
 ifeq ($(strip $(NO_ICON)),)
-NROFLAGS += --icon=$(CURDIR)/$(ICON)
+NROFLAGS += --icon=$(TOPDIR)/$(ICON)
 endif
 ifeq ($(strip $(NO_NACP)),)
 NROFLAGS += --nacp=$(BINDIR)/$(OUTPUT).nacp
 endif
 
-# ---------------------------------------------------------------------------------
-# Main targets
-# ---------------------------------------------------------------------------------
-.PHONY: all clean
+# -----------------------------------------------------------------------------
+# Targets
+# -----------------------------------------------------------------------------
+.PHONY: all clean all-before all-after clean-custom
 
-all: $(BINDIR)/$(OUTPUT).nro
+all: all-before $(BIN) all-after
 
-# Build ELF
+clean: clean-custom
+	$(RM) $(OBJ) $(BIN)
+
 $(BIN): $(OBJ)
 	$(LINK) $(LINKOBJ) -o $(BIN) $(LIBS)
 
-# Compile each source file
+# Compile all source files
 obj/%.o: %.cpp
 	@mkdir -p obj
 	$(CPP) -c $< -o $@ $(CXXFLAGS)
 
-# Generate NACP file
+# ---------------------------------------------------------------------------------
+# NRO pipeline (MVG style)
+# ---------------------------------------------------------------------------------
+all: $(BINDIR)/$(OUTPUT).pfs0 $(BINDIR)/$(OUTPUT).nro
+
+$(BINDIR)/$(OUTPUT).pfs0: $(BINDIR)/$(OUTPUT).nso
+$(BINDIR)/$(OUTPUT).nso: $(BIN)
+
+# Only generate NACP if it doesn’t exist
 $(BINDIR)/$(OUTPUT).nacp:
 	@mkdir -p $(BINDIR)
-	nx_generate_nacp $(BINDIR)/$(OUTPUT).nacp \
-		--title "$(APP_TITLE)" \
-		--author "$(APP_AUTHOR)" \
-		--version "$(APP_VERSION)" \
-		--icon "$(ICON)"
+	if [ ! -f $@ ]; then \
+		nx_generate_nacp $@ \
+			--title "$(APP_TITLE)" \
+			--author "$(APP_AUTHOR)" \
+			--version "$(APP_VERSION)" \
+			--icon "$(ICON)"; \
+	fi
 
-# Build NSO from ELF
-$(BINDIR)/$(OUTPUT).nso: $(BIN)
-	@mkdir -p $(BINDIR)
-	elf2nso $< $@
+ifeq ($(strip $(NO_NACP)),)
+$(BINDIR)/$(OUTPUT).nro: $(BINDIR)/$(OUTPUT).elf $(BINDIR)/$(OUTPUT).nacp
+else
+$(BINDIR)/$(OUTPUT).nro: $(BINDIR)/$(OUTPUT).elf
+endif
 
-# Build PFS0 (payload container)
-$(BINDIR)/$(OUTPUT).pfs0: $(BINDIR)/$(OUTPUT).nso
-	@mkdir -p $(BINDIR)
-	nx_mksfo --elf $< --out $@
-
-# Build final NRO
-$(BINDIR)/$(OUTPUT).nro: $(BINDIR)/$(OUTPUT).pfs0 $(BINDIR)/$(OUTPUT).nacp
-	@mkdir -p $(BINDIR)
-	elf2nro $< $@
-
-clean:
-	$(RM) $(OBJ) $(BIN) $(BINDIR)/$(OUTPUT).nso \
-	       $(BINDIR)/$(OUTPUT).pfs0 $(BINDIR)/$(OUTPUT).nro \
-	       $(BINDIR)/$(OUTPUT).nacp
+$(BINDIR)/$(OUTPUT).elf: $(OBJ)
