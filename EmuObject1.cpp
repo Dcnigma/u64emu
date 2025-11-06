@@ -1,33 +1,24 @@
-#ifndef EMUOBJECT1_H
-#define EMUOBJECT1_H
+#include "EmuObject1.h"
 
-#include "global.h"
-#include "mmInputDevice.h"
+CEmuObject::CEmuObject() {
+    m_FileName[0] = '\0';
+    m_InputDevice = nullptr;
+    m_Debug = false;
+    m_IsRunning = false;
+    m_CycleCount = 0;
+    m_FrameCount = 0;
+}
 
-class CEmuObject {
-public:
-    CEmuObject();
-    ~CEmuObject();
+CEmuObject::~CEmuObject() {}
 
-    // Core functions
-    void Init();
-    void Emulate(const char* filename);
-    bool UpdateDisplay();
-    void StopEmulation();
-    void UpdateAudio(unsigned int size);
+// Core functions
+void CEmuObject::Init() {}
+void CEmuObject::Emulate(const char* filename) { (void)filename; }
+bool CEmuObject::UpdateDisplay() { return true; }
+void CEmuObject::StopEmulation() {}
+void CEmuObject::UpdateAudio(unsigned int size) { (void)size; }
 
-    // Optional game functions
-    void LoadGame(const char* filename);
-    void SaveGame(const char* filename);
-    void Reset();
-
-    // Members
-    bool m_Debug;                   // debug flag
-    char m_FileName[256];           // loaded ROM filename
-    mmInputDevice* m_InputDevice;   // input device pointer
-    bool m_IsRunning;               // emulation running flag
-    DWORD m_CycleCount;             // CPU cycles
-    int m_FrameCount;               // frame counter
-};
-
-#endif // EMUOBJECT1_H
+// Optional game functions
+void CEmuObject::LoadGame(const char* filename) { (void)filename; }
+void CEmuObject::SaveGame(const char* filename) { (void)filename; }
+void CEmuObject::Reset() {}
