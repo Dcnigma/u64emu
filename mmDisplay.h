@@ -22,7 +22,7 @@ public:
 private:
     WORD* IntermediateBuffer;
 
-    // Static members
+    // EGL/OpenGL members
     static EGLDisplay s_display;
     static EGLContext s_context;
     static EGLSurface s_surface;
@@ -30,10 +30,11 @@ private:
     static GLuint VBO, VAO, EBO;
     static GLuint s_tex;
 
-    // Private methods for EGL
+    // Private helper functions
     bool initEgl();
     void deinitEgl();
+    GLuint createAndCompileShader(GLenum type, const char* source);
 };
 
-// Declare global display object
+// Global display object
 extern mmDisplay theDisplay;
