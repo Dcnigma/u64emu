@@ -5,51 +5,87 @@ endif
 TOPDIR ?= $(CURDIR)
 include $(DEVKITPRO)/libnx/switch_rules
 
+export BUILD_EXEFS_SRC := build/exefs
+
 APP_TITLE       := kinx
 APP_DESCRIPTION := kinx
 APP_AUTHOR      := MVG & DCNigma
 APP_VERSION     := 1.0.0
 ICON            := logo2.jpg
-OUTPUT          := kinx
-BINDIR          := release
-BUILD           := build
 
-OBJ := obj/global.o obj/2100dasm.o obj/adsp2100.o obj/iMemory.o obj/iMemoryOps.o \
-       obj/iBranchOps.o obj/iCPU.o obj/iFPOps.o obj/iATA.o obj/iMain.o obj/hleDSP.o \
-       obj/hleMain.o obj/iRom.o obj/EmuObject1.o obj/ki.o obj/iGeneralOps.o obj/mmDisplay.o obj/mmInputDevice.o
+# Compiler and linker
+CPP    := aarch64-none-elf-g++
+LINK   := aarch64-none-elf-g++
+RM     := rm -f
 
+# Output directories and files
+BUILD  := build
+BINDIR := release
+OUTPUT := kinx
+BIN    := $(BINDIR)/$(OUTPUT).elf
+
+# Sources and objects
+SRC    := global.cpp 2100dasm.cpp adsp2100.cpp iMemory.cpp iMemoryOps.cpp iBranchOps.cpp \
+          iCPU.cpp iFPOps.cpp iATA.cpp iMain.cpp hleDSP.cpp hleMain.cpp iRom.cpp \
+          EmuObject1.cpp ki.cpp iGeneralOps.cpp mmDisplay.cpp mmInputDevice.cpp
+OBJ    := $(patsubst %.cpp,obj/%.o,$(SRC))
 LINKOBJ := $(OBJ)
-LIBS    := -specs=$(DEVKITPRO)/libnx/switch.specs -g -march=armv8-a -mtune=cortex-a57 \
-           -mtp=soft -fPIE -mcpu=cortex-a57+crc+fp+simd \
-           -L$(DEVKITPRO)/libnx/lib -L$(DEVKITPRO)/portlibs/switch/lib \
-           -lglad -lEGL -lglapi -ldrm_nouveau -lnx
 
+# Includes and defines
 INCS    := -I"src/main" -I$(DEVKITPRO)/libnx/include -I$(DEVKITPRO)/portlibs/switch/include
-CXXFLAGS := $(INCS) -D__SWITCH__ -march=armv8-a -mcpu=cortex-a57+crc+fp+simd \
+DEFINES := -D__SWITCH__
+CXXFLAGS := $(INCS) $(DEFINES) -march=armv8-a -mcpu=cortex-a57+crc+fp+simd \
             -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections \
             -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
+LIBS    := -specs=$(DEVKITPRO)/libnx/switch.specs -g -march=armv8-a -mtune=cortex-a57 \
+            -mtp=soft -fPIE -mcpu=cortex-a57+crc+fp+simd \
+            -L$(DEVKITPRO)/libnx/lib -L$(DEVKITPRO)/portlibs/switch/lib \
+            -lglad -lEGL -lglapi -ldrm_nouveau -lnx
 
-LINK   := aarch64-none-elf-g++ 
-CPP    := aarch64-none-elf-g++
+# NRO flags
+NROFLAGS := --icon=$(TOPDIR)/$(ICON) --nacp=$(BINDIR)/$(OUTPUT).nacp
 
+#---------------------------------------------------------------------------------
+# Main targets
+#---------------------------------------------------------------------------------
 .PHONY: all clean
 
-all: $(BINDIR)/$(OUTPUT).elf $(BINDIR)/$(OUTPUT).nro
+all: $(BINDIR)/$(OUTPUT).nro
 
-# Compile source files
+clean:
+	$(RM) $(OBJ) $(BIN) $(BINDIR)/$(OUTPUT).nro $(BINDIR)/$(OUTPUT).nacp \
+	        $(BINDIR)/$(OUTPUT).pfs0 $(BINDIR)/$(OUTPUT).nso
+
+# Compile object files
 obj/%.o: %.cpp
+	@mkdir -p obj
 	$(CPP) -c $< -o $@ $(CXXFLAGS)
 
 # Link ELF
-$(BINDIR)/$(OUTPUT).elf: $(OBJ)
+$(BIN): $(OBJ)
+	@mkdir -p $(BINDIR)
 	$(LINK) $(LINKOBJ) -o $@ $(LIBS)
 
-# Build NRO (using libnx switch_rules)
-ifeq ($(strip $(NO_NACP)),)
-$(BINDIR)/$(OUTPUT).nro: $(BINDIR)/$(OUTPUT).elf $(BINDIR)/$(OUTPUT).nacp
-else
-$(BINDIR)/$(OUTPUT).nro: $(BINDIR)/$(OUTPUT).elf
-endif
+# Generate NACP
+$(BINDIR)/$(OUTPUT).nacp:
+	@mkdir -p $(BINDIR)
+	nx_generate_nacp $@ \
+		--title "$(APP_TITLE)" \
+		--author "$(APP_AUTHOR)" \
+		--version "$(APP_VERSION)" \
+		--icon "$(ICON)"
 
-clean:
-	rm -f $(OBJ) $(BINDIR)/$(OUTPUT).elf $(BINDIR)/$(OUTPUT).nro
+# Generate NSO (optional, for pfs0)
+$(BINDIR)/$(OUTPUT).nso: $(BIN)
+	@mkdir -p $(BINDIR)
+	elf2nso $< $@
+
+# Generate PFS0 (optional)
+$(BINDIR)/$(OUTPUT).pfs0: $(BINDIR)/$(OUTPUT).nso
+	@mkdir -p $(BINDIR)
+	nso2pfs0 $< $@
+
+# Generate final NRO
+$(BINDIR)/$(OUTPUT).nro: $(BIN) $(BINDIR)/$(OUTPUT).nacp
+	@mkdir -p $(BINDIR)
+	nro2nso $< $@ $(NROFLAGS)
