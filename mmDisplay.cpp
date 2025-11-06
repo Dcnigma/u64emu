@@ -130,12 +130,17 @@ bool initEgl() {
 }
 
 void deinitEgl() {
-    if (s_display != EGL_NO_DISPLAY) {
-        eglMakeCurrent(s_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-        if (s_context) { eglDestroyContext(s_display, s_context); s_context = EGL_NO_CONTEXT; }
-        if (s_surface) { eglDestroySurface(s_display, s_surface); s_surface = EGL_NO_SURFACE; }
-        eglTerminate(s_display);
-        s_display = EGL_NO_DISPLAY;
+    if (mmDisplay::s_display != EGL_NO_DISPLAY) {
+        if (mmDisplay::s_context) {
+            eglDestroyContext(mmDisplay::s_display, mmDisplay::s_context);
+            mmDisplay::s_context = EGL_NO_CONTEXT;
+        }
+        if (mmDisplay::s_surface) {
+            eglDestroySurface(mmDisplay::s_display, mmDisplay::s_surface);
+            mmDisplay::s_surface = EGL_NO_SURFACE;
+        }
+        eglTerminate(mmDisplay::s_display);
+        mmDisplay::s_display = EGL_NO_DISPLAY;
     }
 }
 
