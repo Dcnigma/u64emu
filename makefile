@@ -1,49 +1,52 @@
-# Simple recursive Makefile for u64emu Switch build
+#--------------------------
+# U64Emu Switch Makefile
+#--------------------------
 
-# Compiler and tools
-CXX = aarch64-none-elf-g++
-RM = rm -rf
-MKDIR = mkdir -p
+ifeq ($(strip $(DEVKITPRO)),)
+$(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>/devkitpro")
+endif
 
-# Directories
-SRC_DIR = src
-OBJ_DIR = obj
-BIN_DIR = release
+TOPDIR ?= $(CURDIR)
+include $(DEVKITPRO)/libnx/switch_rules
 
-# Switch/LibNX settings
-DEVKITPRO ?= /opt/devkitpro
-DEVKITA64 ?= $(DEVKITPRO)/devkitA64
-LIBNX_DIR ?= $(DEVKITPRO)/libnx
-CXXFLAGS = -D__SWITCH__ -march=armv8-a -mcpu=cortex-a57+crc+fp+simd \
-           -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections \
-           -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w \
-           -I$(SRC_DIR) -I$(LIBNX_DIR)/include -I$(DEVKITPRO)/portlibs/switch/include
-LDFLAGS = -specs=$(LIBNX_DIR)/switch.specs \
-          -L$(LIBNX_DIR)/lib -L$(DEVKITPRO)/portlibs/switch/lib \
-          -lglad -lEGL -lglapi -ldrm_nouveau -lnx
+#--------------------------
+# Output & directories
+#--------------------------
+APP_TITLE := kinx
+APP_AUTHOR := MVG
+APP_VERSION := 1.0.0
+ICON := logo2.jpg
 
-# Recursive search for source files
-SOURCES := $(shell find $(SRC_DIR) -name '*.cpp')
-OBJECTS := $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SOURCES))
+OBJ       = obj/2100dasm.o obj/adsp2100.o obj/iMemory.o obj/iMemoryOps.o obj/iBranchOps.o obj/iCPU.o \
+            obj/iFPOps.o obj/iATA.o obj/iMain.o obj/hleDSP.o obj/hleMain.o obj/iRom.o obj/EmuObject1.o \
+            obj/ki.o obj/iGeneralOps.o obj/mmDisplay.o obj/mmInputDevice.o
 
-# Output binary
-TARGET = $(BIN_DIR)/kinx.elf
+BIN       = release/kinx.elf
+LINK      = aarch64-none-elf-g++
+CPP       = aarch64-none-elf-g++
+CXXFLAGS  = -I"src/main" -I$(DEVKITPRO)/libnx/include -I$(DEVKITPRO)/portlibs/switch/include \
+            -D__SWITCH__ -march=armv8-a -mcpu=cortex-a57+crc+fp+simd \
+            -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections \
+            -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
+LIBS      = -specs=$(DEVKITPRO)/libnx/switch.specs \
+            -L$(DEVKITPRO)/libnx/lib -L$(DEVKITPRO)/portlibs/switch/lib \
+            -lglad -lEGL -lglapi -ldrm_nouveau -lnx
 
-# Default target
-all: $(TARGET)
+#--------------------------
+# Targets
+#--------------------------
+all: $(BIN)
 
-# Link
-$(TARGET): $(OBJECTS)
-	$(MKDIR) $(BIN_DIR)
-	$(CXX) $(OBJECTS) -o $@ $(LDFLAGS)
-
-# Compile C++ files
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
-	$(MKDIR) $(dir $@)
-	$(CXX) -c $< -o $@ $(CXXFLAGS)
-
-# Clean
 clean:
-	$(RM) $(OBJ_DIR) $(BIN_DIR)
+	rm -rf obj/* release/*
 
-.PHONY: all clean
+$(BIN): $(OBJ)
+	@mkdir -p release
+	$(LINK) $(OBJ) -o $(BIN) $(LIBS)
+
+#--------------------------
+# Object compilation rules
+#--------------------------
+obj/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CPP) -c $< -o $@ $(CXXFLAGS)
