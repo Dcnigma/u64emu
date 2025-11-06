@@ -1,131 +1,58 @@
- 
+# ----------------------
+# U64EMU Makefile for Switch (LibNX)
+# ----------------------
 
-ifeq ($(strip $(DEVKITPRO)),)
-$(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>/devkitpro")
-endif
+# Compiler and tools
+CC      := aarch64-none-elf-g++
+CXX     := aarch64-none-elf-g++
+LD      := aarch64-none-elf-g++
+AR      := aarch64-none-elf-ar
+RM      := rm -f
 
-TOPDIR ?= $(CURDIR)
- 
-include $(DEVKITPRO)/libnx/switch_rules
+# Project directories
+SRC_DIR := src/main
+OBJ_DIR := obj
+BIN_DIR := release
 
-export BUILD_EXEFS_SRC := build/exefs
+# Switch/LibNX includes and libs
+INC     := -I$(SRC_DIR) \
+           -I/opt/devkitpro/libnx/include \
+           -I/opt/devkitpro/portlibs/switch/include
+LIBS    := -L/opt/devkitpro/libnx/lib \
+           -L/opt/devkitpro/portlibs/switch/lib \
+           -lglad -lEGL -lglapi -ldrm_nouveau -lnx
 
-APP_TITLE := kinx
-APP_DESCRIPTION := kinx
-APP_AUTHOR := MVG
-APP_VERSION := 1.0.0
-ICON := logo2.jpg
+# Compiler flags
+CFLAGS  := -D__SWITCH__ -march=armv8-a -mcpu=cortex-a57+crc+fp+simd \
+           -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections \
+           -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
 
-WINDRES   = windres.exe
-OBJ       = obj/2100dasm.o obj/adsp2100.o obj/iMemory.o obj/iMemoryOps.o obj/iBranchOps.o obj/iCPU.o obj/iFPOps.o obj/iATA.o obj/iMain.o obj/hleDSP.o obj/hleMain.o obj/iRom.o obj/EmuObject1.o obj/ki.o obj/iGeneralOps.o obj/mmDisplay.o obj/mmInputDevice.o
-LINKOBJ   = obj/2100dasm.o obj/adsp2100.o obj/iMemory.o obj/iMemoryOps.o obj/iBranchOps.o obj/iCPU.o obj/iFPOps.o obj/iATA.o obj/iMain.o obj/hleDSP.o obj/hleMain.o obj/iRom.o obj/EmuObject1.o obj/ki.o obj/iGeneralOps.o obj/mmDisplay.o obj/mmInputDevice.o
-LIBS      = -specs=$(DEVKITPRO)/libnx/switch.specs -g -march=armv8-a -mtune=cortex-a57 -mtp=soft -fPIE -mcpu=cortex-a57+crc+fp+simd -L$(DEVKITPRO)/libnx/lib -L$(DEVKITPRO)/portlibs/switch/lib -lglad -lEGL -lglapi -ldrm_nouveau -lnx
-INCS      = -I"src/main" -I$(DEVKITPRO)/libnx/include -I$(DEVKITPRO)/portlibs/switch/include
-CXXINCS   = -I"src/main" -I$(DEVKITPRO)/libnx/include -I$(DEVKITPRO)/portlibs/switch/include
-BIN       = release/kinx.elf
-BUILD	  =	build
-BINDIR	  = release
-DEFINES   = -D__SWITCH__
-CXXFLAGS  = $(CXXINCS) $(DEFINES) -march=armv8-a -mcpu=cortex-a57+crc+fp+simd -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
-CFLAGS    = $(INCS) $(DEFINES)    -march=armv8-a -mcpu=cortex-a57+crc+fp+simd -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
-GPROF     = gprof.exe
-RM        = rm -f
-LINK      = aarch64-none-elf-g++ 
-CPP		  = aarch64-none-elf-g++
-OUTPUT    = kinx
+# Source files
+SRCS := $(wildcard $(SRC_DIR)/*.cpp)
+OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))
 
+# Output binary
+TARGET := $(BIN_DIR)/kinx.elf
 
-ifeq ($(strip $(ICON)),)
-	icons := $(wildcard *.jpg)
-	ifneq (,$(findstring $(TARGET).jpg,$(icons)))
-		export APP_ICON := $(TOPDIR)/$(TARGET).jpg
-	else
-		ifneq (,$(findstring icon.jpg,$(icons)))
-			export APP_ICON := $(TOPDIR)/icon.jpg
-		endif
-	endif
-else
-	export APP_ICON := $(TOPDIR)/$(ICON)
-endif
+# Default target
+all: $(TARGET)
 
-ifeq ($(strip $(NO_ICON)),)
-	export NROFLAGS += --icon=$(APP_ICON)
-endif
+# Compile
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
+	$(CXX) $(CFLAGS) $(INC) -c $< -o $@
 
-ifeq ($(strip $(NO_NACP)),)
-	export NROFLAGS += --nacp=$(BINDIR)/$(OUTPUT).nacp
-endif
+# Link
+$(TARGET): $(OBJS) | $(BIN_DIR)
+	$(LD) $(OBJS) -o $(TARGET) -specs=/opt/devkitpro/libnx/switch.specs $(CFLAGS) $(LIBS)
 
-ifneq ($(APP_TITLEID),)
-	export NACPFLAGS += --titleid=$(APP_TITLEID)
-endif
+# Directories
+$(OBJ_DIR):
+	mkdir -p $(OBJ_DIR)
 
-ifneq ($(ROMFS),)
-	export NROFLAGS += --romfsdir=$(CURDIR)/$(ROMFS)
-endif
+$(BIN_DIR):
+	mkdir -p $(BIN_DIR)
 
-
-.PHONY: all all-before all-after clean clean-custom
-all: all-before $(BIN) all-after
-
-clean: clean-custom
-	$(RM) $(OBJ) $(BIN)
-
-$(BIN): $(OBJ)
-	$(LINK) $(LINKOBJ) -o "release/kinx.elf" $(LIBS)
-
-obj/2100dasm.o: $(GLOBALDEPS) 2100dasm.cpp
-	$(CPP) -c 2100dasm.cpp -o obj/2100dasm.o $(CXXFLAGS)
-obj/adsp2100.o: $(GLOBALDEPS) adsp2100.cpp
-	$(CPP) -c adsp2100.cpp -o obj/adsp2100.o $(CXXFLAGS)	
-obj/iMemory.o: $(GLOBALDEPS) iMemory.cpp
-	$(CPP) -c iMemory.cpp -o obj/iMemory.o $(CXXFLAGS)		
-obj/iMemoryOps.o: $(GLOBALDEPS) iMemoryOps.cpp
-	$(CPP) -c iMemoryOps.cpp -o obj/iMemoryOps.o $(CXXFLAGS)	
-obj/iBranchOps.o: $(GLOBALDEPS) iBranchOps.cpp
-	$(CPP) -c iBranchOps.cpp -o obj/iBranchOps.o $(CXXFLAGS)	
-obj/iCPU.o: $(GLOBALDEPS) iCPU.cpp
-	$(CPP) -c iCPU.cpp -o obj/iCPU.o $(CXXFLAGS)		
-obj/iFPOps.o: $(GLOBALDEPS) iFPOps.cpp
-	$(CPP) -c iFPOps.cpp -o obj/iFPOps.o $(CXXFLAGS)		
-obj/iATA.o: $(GLOBALDEPS) iATA.cpp
-	$(CPP) -c iATA.cpp -o obj/iATA.o $(CXXFLAGS)	
-obj/iMain.o: $(GLOBALDEPS) iMain.cpp
-	$(CPP) -c iMain.cpp -o obj/iMain.o $(CXXFLAGS)		
-obj/hleDSP.o: $(GLOBALDEPS) hleDSP.cpp
-	$(CPP) -c hleDSP.cpp -o obj/hleDSP.o $(CXXFLAGS)		
-obj/hleMain.o: $(GLOBALDEPS) hleMain.cpp
-	$(CPP) -c hleMain.cpp -o obj/hleMain.o $(CXXFLAGS)	
-obj/iRom.o: $(GLOBALDEPS) iRom.cpp
-	$(CPP) -c iRom.cpp -o obj/iRom.o $(CXXFLAGS)	
-obj/EmuObject1.o: $(GLOBALDEPS) EmuObject1.cpp
-	$(CPP) -c EmuObject1.cpp -o obj/EmuObject1.o $(CXXFLAGS)	
-obj/ki.o: $(GLOBALDEPS) ki.cpp
-	$(CPP) -c ki.cpp -o obj/ki.o $(CXXFLAGS)	
-obj/iGeneralOps.o: $(GLOBALDEPS) iGeneralOps.cpp
-	$(CPP) -c iGeneralOps.cpp -o obj/iGeneralOps.o $(CXXFLAGS)	
-obj/mmDisplay.o: $(GLOBALDEPS) mmDisplay.cpp
-	$(CPP) -c mmDisplay.cpp -o obj/mmDisplay.o $(CXXFLAGS)		
-obj/mmInputDevice.o: $(GLOBALDEPS) mmInputDevice.cpp
-	$(CPP) -c mmInputDevice.cpp -o obj/mmInputDevice.o $(CXXFLAGS)		
- 
-#---------------------------------------------------------------------------------
-# main targets
-#---------------------------------------------------------------------------------
-all	:	$(BINDIR)/$(OUTPUT).pfs0 $(BINDIR)/$(OUTPUT).nro
-
-$(BINDIR)/$(OUTPUT).pfs0	:	$(BINDIR)/$(OUTPUT).nso
-
-$(BINDIR)/$(OUTPUT).nso	:	$(BINDIR)/$(OUTPUT).elf
-
-ifeq ($(strip $(NO_NACP)),)
-$(BINDIR)/$(OUTPUT).nro	:	$(BINDIR)/$(OUTPUT).elf $(BINDIR)/$(OUTPUT).nacp
-else
-$(BINDIR)/$(OUTPUT).nro	:	$(BINDIR)/$(OUTPUT).elf
-endif
-
-$(BINDIR)/$(OUTPUT).elf	:	$(OFILES)
-
-$(OFILES_SRC)	: $(HFILES_BIN)
-	
-# end of Makefile ...
+# Clean
+clean:
+	$(RM) $(OBJ_DIR)/*.o
+	$(RM) $(TARGET)
