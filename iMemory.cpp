@@ -2,7 +2,7 @@
 #include "stdafx.h"
 #include "math.h"
 #include "ki.h"
-
+#include "global.h"
 #include "iMain.h"
 
 #include "iCPU.h"			// Core 4600 emulation routines
