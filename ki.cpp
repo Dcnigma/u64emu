@@ -19,7 +19,7 @@ bool bQuitSignal;
 int gameisrunning = 0;
 
 // Correct global variables matching global.h
-int gRomSet;      // ROM set flag
+//int gRomSet;      // ROM set flag in global.cpp
 int gAllowHLE;    // HLE flag
 
 CKIApp::CKIApp() { /* All init happens in InitInstance */ }
