@@ -14,7 +14,9 @@ class CEmuObject
 public:
     CEmuObject();
     ~CEmuObject();
-
+    // … existing declarations …
+    void UpdateAudio(unsigned int size);
+    bool m_Debug;
     void Init();
     void StopEmulation();
     bool UpdateDisplay();
