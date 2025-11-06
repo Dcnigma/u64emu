@@ -97,7 +97,7 @@ static GLuint createAndCompileShader(GLenum type, const char* source) {
 }
 
 bool initEgl() {
-    s_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    mmDisplay::s_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (s_display == EGL_NO_DISPLAY) return false;
 
     eglInitialize(s_display, NULL, NULL);
@@ -114,7 +114,7 @@ bool initEgl() {
     };
     eglChooseConfig(s_display, framebufferAttributeList, &config, 1, &numConfigs);
 
-    s_surface = eglCreateWindowSurface(s_display, config, (NativeWindowType)nwindowGetDefault(), NULL);
+    mmDisplay::s_surface = eglCreateWindowSurface(mmDisplay::s_display, config, (NativeWindowType)nwindowGetDefault(), NULL);
     if (s_surface == EGL_NO_SURFACE) return false;
 
     static const EGLint contextAttributeList[] = {
@@ -122,7 +122,7 @@ bool initEgl() {
         EGL_CONTEXT_MINOR_VERSION, 3,
         EGL_NONE
     };
-    s_context = eglCreateContext(s_display, config, EGL_NO_CONTEXT, contextAttributeList);
+    mmDisplay::s_context = eglCreateContext(mmDisplay::s_display, config, EGL_NO_CONTEXT, contextAttributeList);
     if (s_context == EGL_NO_CONTEXT) return false;
 
     eglMakeCurrent(s_display, s_surface, s_surface, s_context);
