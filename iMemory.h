@@ -1,0 +1,63 @@
+#ifndef IMEM_H
+#define IMEM_H
+
+#include "global.h"  // include global definitions like SRAM, BYTE, WORD, DWORD, QWORD
+
+extern WORD iMemToDo;
+extern WORD iMemTLBActive;
+
+// Core memory functions
+void iMemConstruct();
+void iMemDestruct();
+void iMemFinalCheck();
+BYTE* iMemPhysReadAddr(DWORD VAddr);
+BYTE* iMemPhysWriteAddr(DWORD VAddr);
+BYTE iMemReadByte(DWORD where);
+WORD iMemReadWord(DWORD where);
+DWORD iMemReadDWord(DWORD where);
+QWORD iMemReadQWord(DWORD where);
+void iMemWriteByte(BYTE what, DWORD where);
+void iMemWriteWord(WORD what, DWORD where);
+void iMemWriteDWord(DWORD what, DWORD where);
+void iMemWriteQWord(QWORD what, DWORD where);
+void iMemInit();
+void iMemClear();
+void iMemFree();
+void iMemDoDisplayRefresh();
+void iMemUpdateAIReg();
+void iMemUpdateVIReg();
+void iMemUpdatePIReg();
+void iMemUpdateMIReg();
+void iMemUpdateSPReg();
+void iMemUpdateDPReg();
+
+// Boot code and ROM handling
+void iMemCopyBootCode();
+void iRomReadImage(const char* filename);
+
+// Save/load functions
+void iMemSave(FILE* tmp);
+void iMemLoad(FILE* tmp);
+void iMemLoadShort(FILE* tmp);
+
+// Debug memory addresses
+extern DWORD iMemWriteByteAddress;
+extern DWORD iMemWriteWordAddress;
+extern DWORD iMemWriteDWordAddress;
+extern DWORD iMemWriteQWordAddress;
+extern DWORD iMemReadByteAddress;
+extern DWORD iMemReadWordAddress;
+extern DWORD iMemReadDWordAddress;
+extern DWORD iMemReadQWordAddress;
+
+// DSP memory
+extern unsigned char* DSPPMem;
+extern unsigned char* DSPDMem;
+extern BYTE dspReadByte(DWORD A);
+extern unsigned int dspReadWord(DWORD A);
+extern DWORD dspReadDWord(DWORD A);
+extern void dspWriteByte(DWORD A, BYTE V);
+extern void dspWriteWord(DWORD A, WORD V);
+extern void dspWriteDWord(DWORD A, DWORD V);
+
+#endif // IMEM_H
