@@ -21,12 +21,18 @@ public:
 
 private:
     WORD* IntermediateBuffer;
+
+    // Static members
     static EGLDisplay s_display;
     static EGLContext s_context;
     static EGLSurface s_surface;
     static GLuint s_program;
     static GLuint VBO, VAO, EBO;
     static GLuint s_tex;
+
+    // Private methods for EGL
+    bool initEgl();
+    void deinitEgl();
 };
 
 // Declare global display object
