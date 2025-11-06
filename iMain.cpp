@@ -10,6 +10,7 @@
 #include "dynaCompiler.h"
 #include "adsp2100.h"
 #include "hleDSP.h"
+#include "global.h"
 
 #define STACKSIZE (8 * 1024)
 
