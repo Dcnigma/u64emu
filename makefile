@@ -7,85 +7,84 @@ include $(DEVKITPRO)/libnx/switch_rules
 
 export BUILD_EXEFS_SRC := build/exefs
 
-APP_TITLE       := kinx
+APP_TITLE := kinx
 APP_DESCRIPTION := kinx
-APP_AUTHOR      := MVG & DCNigma
-APP_VERSION     := 1.0.0
-ICON            := logo2.jpg
+APP_AUTHOR := MVG & DCNigma
+APP_VERSION := 1.0.0
+ICON := logo2.jpg
 
-# Compiler and linker
-CPP    := aarch64-none-elf-g++
-LINK   := aarch64-none-elf-g++
-RM     := rm -f
+OBJ = obj/global.o obj/2100dasm.o obj/adsp2100.o obj/iMemory.o obj/iMemoryOps.o \
+      obj/iBranchOps.o obj/iCPU.o obj/iFPOps.o obj/iATA.o obj/iMain.o obj/hleDSP.o \
+      obj/hleMain.o obj/iRom.o obj/EmuObject1.o obj/ki.o obj/iGeneralOps.o \
+      obj/mmDisplay.o obj/mmInputDevice.o
+LINKOBJ = $(OBJ)
 
-# Output directories and files
-BUILD  := build
-BINDIR := release
-OUTPUT := kinx
-BIN    := $(BINDIR)/$(OUTPUT).elf
+LIBS = -specs=$(DEVKITPRO)/libnx/switch.specs -g \
+       -march=armv8-a -mtune=cortex-a57 -mtp=soft -fPIE \
+       -mcpu=cortex-a57+crc+fp+simd \
+       -L$(DEVKITPRO)/libnx/lib -L$(DEVKITPRO)/portlibs/switch/lib \
+       -lglad -lEGL -lglapi -ldrm_nouveau -lnx
 
-# Sources and objects
-SRC    := global.cpp 2100dasm.cpp adsp2100.cpp iMemory.cpp iMemoryOps.cpp iBranchOps.cpp \
-          iCPU.cpp iFPOps.cpp iATA.cpp iMain.cpp hleDSP.cpp hleMain.cpp iRom.cpp \
-          EmuObject1.cpp ki.cpp iGeneralOps.cpp mmDisplay.cpp mmInputDevice.cpp
-OBJ    := $(patsubst %.cpp,obj/%.o,$(SRC))
-LINKOBJ := $(OBJ)
+INCS = -I"src/main" -I$(DEVKITPRO)/libnx/include -I$(DEVKITPRO)/portlibs/switch/include
+CXXFLAGS = $(INCS) -D__SWITCH__ -march=armv8-a -mcpu=cortex-a57+crc+fp+simd \
+           -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections \
+           -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
+LINK = aarch64-none-elf-g++
+CPP  = aarch64-none-elf-g++
+BIN  = release/kinx.elf
+BINDIR = release
+OUTPUT = kinx
+RM = rm -f
 
-# Includes and defines
-INCS    := -I"src/main" -I$(DEVKITPRO)/libnx/include -I$(DEVKITPRO)/portlibs/switch/include
-DEFINES := -D__SWITCH__
-CXXFLAGS := $(INCS) $(DEFINES) -march=armv8-a -mcpu=cortex-a57+crc+fp+simd \
-            -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections \
-            -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
-LIBS    := -specs=$(DEVKITPRO)/libnx/switch.specs -g -march=armv8-a -mtune=cortex-a57 \
-            -mtp=soft -fPIE -mcpu=cortex-a57+crc+fp+simd \
-            -L$(DEVKITPRO)/libnx/lib -L$(DEVKITPRO)/portlibs/switch/lib \
-            -lglad -lEGL -lglapi -ldrm_nouveau -lnx
+# NRO/NACP flags
+ifeq ($(strip $(NO_ICON)),)
+NROFLAGS += --icon=$(CURDIR)/$(ICON)
+endif
+ifeq ($(strip $(NO_NACP)),)
+NROFLAGS += --nacp=$(BINDIR)/$(OUTPUT).nacp
+endif
 
-# NRO flags
-NROFLAGS := --icon=$(TOPDIR)/$(ICON) --nacp=$(BINDIR)/$(OUTPUT).nacp
-
-#---------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------
 # Main targets
-#---------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------
 .PHONY: all clean
 
 all: $(BINDIR)/$(OUTPUT).nro
 
-clean:
-	$(RM) $(OBJ) $(BIN) $(BINDIR)/$(OUTPUT).nro $(BINDIR)/$(OUTPUT).nacp \
-	        $(BINDIR)/$(OUTPUT).pfs0 $(BINDIR)/$(OUTPUT).nso
+# Build ELF
+$(BIN): $(OBJ)
+	$(LINK) $(LINKOBJ) -o $(BIN) $(LIBS)
 
-# Compile object files
+# Compile each source file
 obj/%.o: %.cpp
 	@mkdir -p obj
 	$(CPP) -c $< -o $@ $(CXXFLAGS)
 
-# Link ELF
-$(BIN): $(OBJ)
-	@mkdir -p $(BINDIR)
-	$(LINK) $(LINKOBJ) -o $@ $(LIBS)
-
-# Generate NACP
+# Generate NACP file
 $(BINDIR)/$(OUTPUT).nacp:
 	@mkdir -p $(BINDIR)
-	nx_generate_nacp $@ \
+	nx_generate_nacp $(BINDIR)/$(OUTPUT).nacp \
 		--title "$(APP_TITLE)" \
 		--author "$(APP_AUTHOR)" \
 		--version "$(APP_VERSION)" \
 		--icon "$(ICON)"
 
-# Generate NSO (optional, for pfs0)
+# Build NSO from ELF
 $(BINDIR)/$(OUTPUT).nso: $(BIN)
 	@mkdir -p $(BINDIR)
 	elf2nso $< $@
 
-# Generate PFS0 (optional)
+# Build PFS0 (payload container)
 $(BINDIR)/$(OUTPUT).pfs0: $(BINDIR)/$(OUTPUT).nso
 	@mkdir -p $(BINDIR)
-	nso2pfs0 $< $@
+	nx_mksfo --elf $< --out $@
 
-# Generate final NRO
-$(BINDIR)/$(OUTPUT).nro: $(BIN) $(BINDIR)/$(OUTPUT).nacp
+# Build final NRO
+$(BINDIR)/$(OUTPUT).nro: $(BINDIR)/$(OUTPUT).pfs0 $(BINDIR)/$(OUTPUT).nacp
 	@mkdir -p $(BINDIR)
-	nro2nso $< $@ $(NROFLAGS)
+	elf2nro $< $@
+
+clean:
+	$(RM) $(OBJ) $(BIN) $(BINDIR)/$(OUTPUT).nso \
+	       $(BINDIR)/$(OUTPUT).pfs0 $(BINDIR)/$(OUTPUT).nro \
+	       $(BINDIR)/$(OUTPUT).nacp
