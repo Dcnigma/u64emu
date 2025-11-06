@@ -58,7 +58,9 @@ void CKIApp::ErrorMessage(const char* fmt, ...)
 class CEmuObject {
 public:
     bool initialized;
-    CEmuObject() : initialized(false) {}
+    u32 frameCount;
+
+    CEmuObject() : initialized(false), frameCount(0) {}
 
     bool Init()
     {
@@ -88,7 +90,17 @@ public:
             initialized = false;
         }
     }
+
+    void UpdateDisplay()
+    {
+        if (!initialized) return;
+
+        frameCount++;
+        printf("\r[Emulation running] Frame: %u", frameCount);
+        fflush(stdout);
+    }
 };
+
 
 // --- BootKI1 (running version) ---
 void BootKI1(void)
@@ -137,25 +149,25 @@ void BootKI1(void)
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
     padInitializeDefault(&pad);
 
-    bool emuRunning = true;
-    while (appletMainLoop() && emuRunning)
+bool emuRunning = true;
+while (appletMainLoop() && emuRunning)
+{
+    padUpdate(&pad);
+    u64 kDown = padGetButtonsDown(&pad);
+
+    if (kDown & HidNpadButton_Plus)
     {
-        padUpdate(&pad);
-        u64 kDown = padGetButtonsDown(&pad);
-
-        if (kDown & HidNpadButton_Plus)
-        {
-            printf("BootKI1(): Exiting emulation...\n");
-            fflush(stdout);
-            emuRunning = false;
-        }
-
-        // Here you could call your CEmuObject update functions:
-        // e.UpdateDisplay();
-        // svcSleepThread(16000); // ~16ms for 60fps
-
-        consoleUpdate(NULL);
+        printf("\nBootKI1(): Exiting emulation...\n");
+        fflush(stdout);
+        emuRunning = false;
     }
+
+    e.UpdateDisplay();           // <-- call the dummy display
+    svcSleepThread(16000);       // ~16ms per frame for ~60 FPS
+
+    consoleUpdate(NULL);
+}
+
 
     // Clean shutdown
     e.Shutdown();
