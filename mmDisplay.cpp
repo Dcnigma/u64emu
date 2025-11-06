@@ -96,8 +96,8 @@ bool initEgl() {
     if (!s_surface) return false;
 
     static const EGLint contextAttributeList[] = {
-        EGL_CONTEXT_MAJOR_VERSION_KHR,3,
-        EGL_CONTEXT_MINOR_VERSION_KHR,0,
+        EGL_CONTEXT_MAJOR_VERSION, 3,  // Switch supports up to OpenGL 3.x
+        EGL_CONTEXT_MINOR_VERSION, 0,
         EGL_NONE
     };
     s_context = eglCreateContext(s_display, config, EGL_NO_CONTEXT, contextAttributeList);
