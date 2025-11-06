@@ -37,18 +37,11 @@ BINDIR = release
 OUTPUT = kinx
 RM = rm -f
 
-ifeq ($(strip $(NO_ICON)),)
-NROFLAGS += --icon=$(TOPDIR)/$(ICON)
-endif
-ifeq ($(strip $(NO_NACP)),)
-NROFLAGS += --nacp=$(BINDIR)/$(OUTPUT).nacp
-endif
-
-# -----------------------------------------------------------------------------
-# Targets
-# -----------------------------------------------------------------------------
 .PHONY: all clean all-before all-after clean-custom
 
+# -----------------------------------------------------------------------------
+# Compile and link
+# -----------------------------------------------------------------------------
 all: all-before $(BIN) all-after
 
 clean: clean-custom
@@ -57,23 +50,23 @@ clean: clean-custom
 $(BIN): $(OBJ)
 	$(LINK) $(LINKOBJ) -o $(BIN) $(LIBS)
 
-# Compile all source files
 obj/%.o: %.cpp
 	@mkdir -p obj
 	$(CPP) -c $< -o $@ $(CXXFLAGS)
 
-# ---------------------------------------------------------------------------------
-# NRO pipeline (MVG style)
-# ---------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# NRO / NSO pipeline (MVG style)
+# -----------------------------------------------------------------------------
 all: $(BINDIR)/$(OUTPUT).pfs0 $(BINDIR)/$(OUTPUT).nro
 
+# follow MVG's order
 $(BINDIR)/$(OUTPUT).pfs0: $(BINDIR)/$(OUTPUT).nso
 $(BINDIR)/$(OUTPUT).nso: $(BIN)
 
-# Only generate NACP if it doesn’t exist
+# only generate NACP if missing
 $(BINDIR)/$(OUTPUT).nacp:
 	@mkdir -p $(BINDIR)
-	if [ ! -f $@ ]; then \
+	if [ ! -f $@ ] && command -v nx_generate_nacp >/dev/null 2>&1; then \
 		nx_generate_nacp $@ \
 			--title "$(APP_TITLE)" \
 			--author "$(APP_AUTHOR)" \
