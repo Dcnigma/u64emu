@@ -52,6 +52,12 @@ void CEmuObject::Emulate(const char* filename)
     StopEmulation();
 }
 
+void CEmuObject::UpdateAudio(unsigned int size)
+{
+    // stubbed out for now — you can expand later
+    (void)size;
+}
+
 uint32_t CEmuObject::ScanInput()
 {
     if (!m_InputDevice)
