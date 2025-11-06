@@ -54,13 +54,22 @@ void CKIApp::ErrorMessage(const char* fmt, ...)
     fclose(f);
 }
 
-// --- Dummy emulator object ---
+// --- Dummy emulator object with console “screen” ---
 class CEmuObject {
 public:
     bool initialized;
     u32 frameCount;
+    static const int width = 16;
+    static const int height = 8;
+    char screen[height][width + 1]; // +1 for null terminator
 
-    CEmuObject() : initialized(false), frameCount(0) {}
+    CEmuObject() : initialized(false), frameCount(0)
+    {
+        for (int y = 0; y < height; y++)
+        {
+            screen[y][width] = '\0'; // null terminate each row
+        }
+    }
 
     bool Init()
     {
@@ -68,25 +77,20 @@ public:
         fflush(stdout);
         initialized = true;
 
-        // Allocate a small memory buffer to simulate ROM/RAM setup
-        void* testBuffer = malloc(1024);
-        if (testBuffer)
-        {
-            memset(testBuffer, 0xAA, 1024);
-            free(testBuffer);
-            printf("Memory test passed\n");
-            fflush(stdout);
-            return true;
-        }
-        printf("Memory allocation failed!\n");
-        return false;
+        // Initialize screen with dots
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+                screen[y][x] = '.';
+
+        frameCount = 0;
+        return true;
     }
 
     void Shutdown()
     {
         if (initialized)
         {
-            printf("CEmuObject::Shutdown() called\n");
+            printf("\nCEmuObject::Shutdown() called\n");
             initialized = false;
         }
     }
@@ -96,10 +100,28 @@ public:
         if (!initialized) return;
 
         frameCount++;
-        printf("\r[Emulation running] Frame: %u", frameCount);
+
+        // Example: move a “*” across the screen
+        int x = frameCount % width;
+        int y = frameCount % height;
+
+        // Clear screen
+        for (int row = 0; row < height; row++)
+            for (int col = 0; col < width; col++)
+                screen[row][col] = '.';
+
+        // Set a moving pixel
+        screen[y][x] = '*';
+
+        // Print to console
+        printf("\x1b[H"); // ANSI escape: move cursor to top-left
+        for (int row = 0; row < height; row++)
+            printf("%s\n", screen[row]);
+        printf("\nFrame: %u\n", frameCount);
         fflush(stdout);
     }
 };
+
 
 
 // --- BootKI1 (running version) ---
