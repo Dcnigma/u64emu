@@ -24,14 +24,13 @@ GLuint mmDisplay::VAO = 0;
 GLuint mmDisplay::EBO = 0;
 GLuint mmDisplay::s_tex = 0;
 
+// Full-screen quad vertices (position, color, texcoords)
 static const float vertices[] = {
-    // positions       // colors        // tex coords
-     1.0f,  1.0f, 0.0f, 1.0f,0.0f,0.0f, 1.0f,0.0f,
-     1.0f, -1.0f, 0.0f, 0.0f,1.0f,0.0f, 1.0f,1.0f,
-    -1.0f, -1.0f, 0.0f, 0.0f,0.0f,1.0f, 0.0f,1.0f,
-    -1.0f,  1.0f, 0.0f, 1.0f,1.0f,0.0f, 0.0f,0.0f
+    1.0f,  1.0f, 0.0f, 1.0f,0.0f,0.0f, 1.0f,0.0f,
+    1.0f, -1.0f, 0.0f, 0.0f,1.0f,0.0f, 1.0f,1.0f,
+   -1.0f, -1.0f, 0.0f, 0.0f,0.0f,1.0f, 0.0f,1.0f,
+   -1.0f,  1.0f, 0.0f, 1.0f,1.0f,0.0f, 0.0f,0.0f
 };
-
 static const unsigned int indices[] = { 0, 1, 3, 1, 2, 3 };
 
 // Shader sources
@@ -44,8 +43,7 @@ layout(location = 2) in vec2 aTexCoord;
 out vec3 ourColor;
 out vec2 TexCoord;
 
-void main()
-{
+void main() {
     gl_Position = vec4(aPos, 1.0);
     ourColor = aColor;
     TexCoord = aTexCoord;
@@ -55,14 +53,12 @@ void main()
 static const char* fragmentShaderSource = R"text(
 #version 330 core
 out vec4 FragColor;
-
 in vec3 ourColor;
 in vec2 TexCoord;
-
 uniform sampler2D texture1;
 
-void main()
-{
+void main() {
+    // Sample RGB565 texture (stored as GL_RGB)
     FragColor = texture(texture1, TexCoord);
 }
 )text";
@@ -98,9 +94,9 @@ static GLuint createAndCompileShader(GLenum type, const char* source) {
 
 bool initEgl() {
     mmDisplay::s_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    if (s_display == EGL_NO_DISPLAY) return false;
+    if (mmDisplay::s_display == EGL_NO_DISPLAY) return false;
 
-    eglInitialize(s_display, NULL, NULL);
+    eglInitialize(mmDisplay::s_display, NULL, NULL);
     eglBindAPI(EGL_OPENGL_API);
 
     EGLConfig config;
@@ -112,10 +108,10 @@ bool initEgl() {
         EGL_BLUE_SIZE, 8,
         EGL_NONE
     };
-    eglChooseConfig(s_display, framebufferAttributeList, &config, 1, &numConfigs);
+    eglChooseConfig(mmDisplay::s_display, framebufferAttributeList, &config, 1, &numConfigs);
 
     mmDisplay::s_surface = eglCreateWindowSurface(mmDisplay::s_display, config, (NativeWindowType)nwindowGetDefault(), NULL);
-    if (s_surface == EGL_NO_SURFACE) return false;
+    if (mmDisplay::s_surface == EGL_NO_SURFACE) return false;
 
     static const EGLint contextAttributeList[] = {
         EGL_CONTEXT_MAJOR_VERSION, 3,
@@ -123,9 +119,9 @@ bool initEgl() {
         EGL_NONE
     };
     mmDisplay::s_context = eglCreateContext(mmDisplay::s_display, config, EGL_NO_CONTEXT, contextAttributeList);
-    if (s_context == EGL_NO_CONTEXT) return false;
+    if (mmDisplay::s_context == EGL_NO_CONTEXT) return false;
 
-    eglMakeCurrent(s_display, s_surface, s_surface, s_context);
+    eglMakeCurrent(mmDisplay::s_display, mmDisplay::s_surface, mmDisplay::s_surface, mmDisplay::s_context);
     return true;
 }
 
@@ -193,16 +189,19 @@ void mmDisplay::Close() { deinitEgl(); }
 
 bool mmDisplay::RenderScene() {
     glViewport(0, 0, WIDTH, HEIGHT);
-    glClearColor(0.2f, 0.3f, 0.8f, 1.0f); // blue test background
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(s_program);
     glBindVertexArray(VAO);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, s_tex);
-
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
     eglSwapBuffers(s_display, s_surface);
+
+    GLenum glerr = glGetError();
+    if (glerr != GL_NO_ERROR) printf("GL Error: 0x%x\n", glerr);
 
     return true;
 }
@@ -212,16 +211,18 @@ void mmDisplay::BeginScene() {}
 void mmDisplay::EndScene() {}
 
 void mmDisplay::UpdateScreenBuffer(unsigned char* source) {
-    // Test pattern: red fill
-    for (int i = 0; i < 320 * 240; i++) IntermediateBuffer[i] = 0xF800;
+    // Fill buffer with red if no source provided
+    if (!source) {
+        for (int i = 0; i < 320 * 240; i++) IntermediateBuffer[i] = 0xF800;
+        source = (unsigned char*)IntermediateBuffer;
+    }
 
     glBindTexture(GL_TEXTURE_2D, s_tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 320, 240, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, IntermediateBuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 320, 240, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, source);
 
     glUseProgram(s_program);
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    eglSwapBuffers(s_display, s_surface);
 }
 
 void mmDisplay::MakeScreenBuffer() {}
