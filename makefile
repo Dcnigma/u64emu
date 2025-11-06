@@ -16,7 +16,7 @@ APP_VERSION := 1.0.0
 ICON := logo2.jpg
 
 WINDRES   = windres.exe
-OBJ       = obj/2100dasm.o obj/adsp2100.o obj/iMemory.o obj/iMemoryOps.o obj/iBranchOps.o obj/iCPU.o obj/iFPOps.o obj/iATA.o obj/iMain.o obj/hleDSP.o obj/hleMain.o obj/iRom.o obj/EmuObject1.o obj/ki.o obj/iGeneralOps.o obj/mmDisplay.o obj/mmInputDevice.o
+OBJ       = obj/2100dasm.o obj/adsp2100.o obj/iMemory.o obj/iMemoryOps.o obj/iBranchOps.o obj/iCPU.o obj/iFPOps.o obj/iATA.o obj/iMain.o obj/hleDSP.o obj/hleMain.o obj/iRom.o obj/CEmuObject.o obj/ki.o obj/iGeneralOps.o obj/mmDisplay.o obj/mmInputDevice.o
 LINKOBJ   = $(OBJ)
 LIBS      = -specs=$(DEVKITPRO)/libnx/switch.specs -g -march=armv8-a -mtune=cortex-a57 -mtp=soft -fPIE -mcpu=cortex-a57+crc+fp+simd -L$(DEVKITPRO)/libnx/lib -L$(DEVKITPRO)/portlibs/switch/lib -lglad -lEGL -lglapi -ldrm_nouveau -lnx
 INCS      = -I"src/main" -I$(DEVKITPRO)/libnx/include -I$(DEVKITPRO)/portlibs/switch/include
@@ -108,8 +108,8 @@ obj/hleMain.o: hleMain.cpp
 obj/iRom.o: iRom.cpp
 	$(CPP) -c iRom.cpp -o obj/iRom.o $(CXXFLAGS)
 
-obj/EmuObject1.o: EmuObject1.cpp
-	$(CPP) -c EmuObject1.cpp -o obj/EmuObject1.o $(CXXFLAGS)
+obj/CEmuObject.o: CEmuObject.cpp
+	$(CPP) -c CEmuObject.cpp -o obj/CEmuObject.o $(CXXFLAGS)
 
 obj/ki.o: ki.cpp
 	$(CPP) -c ki.cpp -o obj/ki.o $(CXXFLAGS)

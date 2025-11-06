@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <cstdlib>
+#include "CEmuObject.h"
 
 // --- Globals ---
 bool bQuitSignal = false;
@@ -54,74 +55,6 @@ void CKIApp::ErrorMessage(const char* fmt, ...)
     fclose(f);
 }
 
-// --- Dummy emulator object with console “screen” ---
-class CEmuObject {
-public:
-    bool initialized;
-    u32 frameCount;
-    static const int width = 16;
-    static const int height = 8;
-    char screen[height][width + 1]; // +1 for null terminator
-
-    CEmuObject() : initialized(false), frameCount(0)
-    {
-        for (int y = 0; y < height; y++)
-        {
-            screen[y][width] = '\0'; // null terminate each row
-        }
-    }
-
-    bool Init()
-    {
-        printf("CEmuObject::Init() called\n");
-        fflush(stdout);
-        initialized = true;
-
-        // Initialize screen with dots
-        for (int y = 0; y < height; y++)
-            for (int x = 0; x < width; x++)
-                screen[y][x] = '.';
-
-        frameCount = 0;
-        return true;
-    }
-
-    void Shutdown()
-    {
-        if (initialized)
-        {
-            printf("\nCEmuObject::Shutdown() called\n");
-            initialized = false;
-        }
-    }
-
-    void UpdateDisplay()
-    {
-        if (!initialized) return;
-
-        frameCount++;
-
-        // Example: move a “*” across the screen
-        int x = frameCount % width;
-        int y = frameCount % height;
-
-        // Clear screen
-        for (int row = 0; row < height; row++)
-            for (int col = 0; col < width; col++)
-                screen[row][col] = '.';
-
-        // Set a moving pixel
-        screen[y][x] = '*';
-
-        // Print to console
-        printf("\x1b[H"); // ANSI escape: move cursor to top-left
-        for (int row = 0; row < height; row++)
-            printf("%s\n", screen[row]);
-        printf("\nFrame: %u\n", frameCount);
-        fflush(stdout);
-    }
-};
-
 
 
 // --- BootKI1 (running version) ---
@@ -141,57 +74,51 @@ void BootKI1(void)
     bQuitSignal = false;
 
     strcpy(theApp.m_HDImage, "ki.img");
-    strcpy(theApp.m_ARom1, "U10-L1");
-    strcpy(theApp.m_ARom2, "U11-L1");
-    strcpy(theApp.m_ARom3, "U12-L1");
-    strcpy(theApp.m_ARom4, "U13-L1");
-    strcpy(theApp.m_ARom5, "U33-L1");
-    strcpy(theApp.m_ARom6, "U34-L1");
-    strcpy(theApp.m_ARom7, "U35-L1");
-    strcpy(theApp.m_ARom8, "U36-L1");
-
     gRomSet = 1; // KI1
 
     printf("BootKI1(): setup done.\n");
     fflush(stdout);
 
+    // --- Create and initialize emulator ---
     CEmuObject e;
-    if (!e.Init())
+    if (!e.Init()) return;
+    if (!e.LoadROM(theApp.m_HDImage))
     {
-        printf("BootKI1(): emulator initialization failed!\n");
-        fflush(stdout);
+        printf("BootKI1(): Failed to load ROM.\n");
         return;
     }
 
     printf("BootKI1(): emulator initialized successfully.\n");
     fflush(stdout);
 
-    // --- Minimal emulation loop ---
+    // --- Setup controller input ---
     PadState pad;
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
     padInitializeDefault(&pad);
 
-bool emuRunning = true;
-while (appletMainLoop() && emuRunning)
-{
-    padUpdate(&pad);
-    u64 kDown = padGetButtonsDown(&pad);
-
-    if (kDown & HidNpadButton_Plus)
+    // --- Emulation loop ---
+    bool emuRunning = true;
+    while (appletMainLoop() && emuRunning)
     {
-        printf("\nBootKI1(): Exiting emulation...\n");
-        fflush(stdout);
-        emuRunning = false;
+        padUpdate(&pad);
+        u64 kDown = padGetButtonsDown(&pad);
+
+        if (kDown & HidNpadButton_Plus)
+        {
+            printf("BootKI1(): Exiting emulation...\n");
+            fflush(stdout);
+            emuRunning = false;
+            break;
+        }
+
+        // Update emulator: CPU step + display
+        e.UpdateDisplay(&pad);
+
+        // 60 FPS delay
+        svcSleepThread(16000);
     }
 
-    e.UpdateDisplay();           // <-- call the dummy display
-    svcSleepThread(16000);       // ~16ms per frame for ~60 FPS
-
-    consoleUpdate(NULL);
-}
-
-
-    // Clean shutdown
+    // --- Clean shutdown ---
     e.Shutdown();
     printf("BootKI1(): exited cleanly.\n");
     fflush(stdout);
