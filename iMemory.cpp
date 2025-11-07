@@ -4,7 +4,7 @@
 #include <cstring>
 #include <cstdio>
 #include <fstream>
-
+#include <switch.h>
 #include "iMemory.h"
 #include "iCPU.h"
 #include "iATA.h"

@@ -2,7 +2,7 @@
 #include "iMemory.h"
 #include "iCPU.h"
 #include "iMain.h"
-
+#include <switch.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>

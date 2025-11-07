@@ -1,73 +1,58 @@
-/*==========================================================================
- *
- *  Copyright (C) 1995 Microsoft Corporation. All Rights Reserved.
- *
- *  File: d3dmath.h
- *
- ***************************************************************************/
 #ifndef __D3DMATH_H__
 #define __D3DMATH_H__
 
 #include <math.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-/*
- * Normalises the vector v
- */
 
-void D3DVECTORSubtract(D3DVECTOR *dst,D3DVECTOR *v1,D3DVECTOR *v2);
-void D3DVECTORAdd(D3DVECTOR *dst,D3DVECTOR *v1,D3DVECTOR *v2);
-void D3DVECTORScalarMultiply(D3DVECTOR *dst,D3DVECTOR *v1,float Scalar);
+/* Basic types */
+typedef float           D3DVALUE;
+typedef struct D3DVECTOR {
+    float x, y, z, w;   /* w is optional/useful for vector-matrix ops */
+} D3DVECTOR, *LPD3DVECTOR;
 
+typedef struct D3DMATRIX {
+    /* Row-major layout matching the implementation */
+    float _11, _12, _13, _14;
+    float _21, _22, _23, _24;
+    float _31, _32, _33, _34;
+    float _41, _42, _43, _44;
+} D3DMATRIX, *LPD3DMATRIX;
+
+/* Vector operations */
+void D3DVECTORSubtract(LPD3DVECTOR dst, LPD3DVECTOR v1, LPD3DVECTOR v2);
+void D3DVECTORAdd(LPD3DVECTOR dst, LPD3DVECTOR v1, LPD3DVECTOR v2);
+void D3DVECTORScalarMultiply(LPD3DVECTOR dst, LPD3DVECTOR v1, float Scalar);
 LPD3DVECTOR D3DVECTORNormalise(LPD3DVECTOR v);
+LPD3DVECTOR D3DVECTORCrossProduct(LPD3DVECTOR dst, LPD3DVECTOR v1, LPD3DVECTOR v2);
+D3DVALUE D3DVECTORDotProduct(LPD3DVECTOR v1, LPD3DVECTOR v2);
 
-/*
- * Calculates cross product of a and b.
- */
-LPD3DVECTOR D3DVECTORCrossProduct(LPD3DVECTOR lpd, LPD3DVECTOR lpa, LPD3DVECTOR lpb);
+/* Matrix operations */
+LPD3DMATRIX MultiplyD3DMATRIX(LPD3DMATRIX dst, LPD3DMATRIX src1, LPD3DMATRIX src2);
+LPD3DMATRIX D3DMATRIXInvert(LPD3DMATRIX dst, LPD3DMATRIX src);
+LPD3DMATRIX D3DMATRIXSetRotation(LPD3DMATRIX dst, LPD3DVECTOR dir, LPD3DVECTOR up);
 
-/*
- * lpDst = lpSrc1 * lpSrc2
- * lpDst can be equal to lpSrc1 or lpSrc2
- */
-D3DVALUE D3DVECTORDotProduct(LPD3DVECTOR lpa,LPD3DVECTOR lpb);
+/* Rotation concatenation */
+void ConcatenateXRotation(LPD3DMATRIX m, float Radians);
+void ConcatenateYRotation(LPD3DMATRIX m, float Radians);
+void ConcatenateZRotation(LPD3DMATRIX m, float Radians);
 
-LPD3DMATRIX MultiplyD3DMATRIX(LPD3DMATRIX lpDst, LPD3DMATRIX lpSrc1, 
-                              LPD3DMATRIX lpSrc2);
-/*
- * -1 d = a
- */
-LPD3DMATRIX D3DMATRIXInvert(LPD3DMATRIX d, LPD3DMATRIX a);
-
-/*
- * Set the rotation part of a matrix such that the vector lpD is the new
- * z-axis and lpU is the new y-axis.
- */
-LPD3DMATRIX D3DMATRIXSetRotation(LPD3DMATRIX lpM, LPD3DVECTOR lpD, LPD3DVECTOR lpU);
-
-LPD3DMATRIX D3DMATRIXCatX(LPD3DMATRIX lpM,float *radians);
-
-/*
- * Calculates a point along a B-Spline curve defined by four points. p
- * n output, contain the point. t                                Position
- * along the curve between p2 and p3.  This position is a float between 0
- * and 1. p1, p2, p3, p4    Points defining spline curve. p, at parameter
- * t along the spline curve
- */
+/* Spline */
 void spline(LPD3DVECTOR p, float t, LPD3DVECTOR p1, LPD3DVECTOR p2,
             LPD3DVECTOR p3, LPD3DVECTOR p4);
 
-void VectorMatrixMultiply(D3DTLVERTEX *dst,D3DVERTEX *srcv,D3DMATRIX *srcm);
-void NormalTransform(D3DTLVERTEX *dst,D3DVERTEX *srcv,D3DMATRIX *srcm);
-void ConcatenateXRotation(LPD3DMATRIX lpM, float Radians );
-void ConcatenateYRotation(LPD3DMATRIX lpM, float Radians );
-void ConcatenateZRotation(LPD3DMATRIX lpM, float Radians );
+/* Vector-Matrix transforms
+   - dst and srcv use D3DVECTOR (x,y,z,w). w should be set by caller (1.0 for positions, 0.0 for normals).
+   - srcm is a full 4x4 matrix (row-major as defined above).
+*/
+void VectorMatrixMultiply(LPD3DVECTOR dst, LPD3DVECTOR srcv, LPD3DMATRIX srcm);
+void NormalTransform(LPD3DVECTOR dst, LPD3DVECTOR srcv, LPD3DMATRIX srcm);
 
 #ifdef __cplusplus
-};
+}
 #endif
 
-#endif // __D3DMATH_H__
-
+#endif /* __D3DMATH_H__ */

@@ -1,5 +1,5 @@
 #pragma once
-
+#include <switch.h>
 // Standard load/store
 inline void helperLb(DWORD address, DWORD op0);
 inline void helperLbU(DWORD address, DWORD op0);

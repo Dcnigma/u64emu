@@ -1,6 +1,6 @@
 #ifndef IMEM_H
 #define IMEM_H
-
+#include <switch.h>
 #include <cstdint>
 #include <cstddef>
 #include <cstdio>

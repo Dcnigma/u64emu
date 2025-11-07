@@ -1,5 +1,6 @@
 #include <cmath>
 #include <cstdint>
+#include <switch.h>
 #include "iMain.h"
 #include "iCPU.h"
 #include "iMemory.h"

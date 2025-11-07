@@ -1,6 +1,6 @@
 #include <cmath>
 #include <cstdint>
-
+#include <switch.h>
 #include "ki.h"
 #include "DynaCompiler.h"
 #include "dynaNative.h"

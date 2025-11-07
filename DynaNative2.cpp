@@ -7,7 +7,7 @@
 #include "math.h"
 #include "ki.h"
 #include "DynaCompiler.h"
-
+#include <switch.h>
 #include <cstdint>
 #include <cstring>
 #include <stdexcept>

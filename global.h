@@ -1,57 +1,71 @@
-#ifndef GLOBAL_H
-#define GLOBAL_H
+#ifndef GLOBAL1_H
+#define GLOBAL1_H
 
-#include <stdint.h>
 #include <switch.h>
-#include <iostream>
-#include <fstream>
 #include <cstring>
-using namespace std;
-
-// ----- Configuration -----
-#define SRAM_SIZE (2 * 1024 * 1024)   // 2 MB SRAM
-
-// ----- Type definitions -----
-typedef void* HANDLE;
-typedef long HRESULT;
-
-typedef unsigned char BYTE;
-typedef signed char sBYTE;
-typedef unsigned short WORD;
-typedef signed short sWORD;
-typedef unsigned int DWORD;
-typedef signed int sDWORD;
-typedef int64_t sQWORD;
-typedef uint64_t QWORD;
-
-typedef unsigned char UINT8;
-typedef signed char INT8;
-typedef unsigned short UINT16;
-typedef signed short INT16;
-typedef unsigned int UINT32;
-typedef signed int INT32;
-typedef int64_t INT64;
-typedef uint64_t UINT64;
-
-typedef unsigned char BIT;
-typedef int BOOL;
-typedef unsigned short HWORD;
-typedef signed short sHWORD;
+#include <cstdlib>
+#include <cctype>
+#include <cstdint>
+#include <cmath>
 
 #define _PI  3.14159265359f
-#define _PI2 6.28318530718f
+#define _PI2  6.28318530718f
+//#define DO_ALL_MATH
 
-// ----- Safety macros -----
-#define SafeFree(ptr) if(ptr!=NULL) { free(ptr); ptr=NULL; }
-#define SafeDelete(ptr) if(ptr!=NULL) { delete ptr; ptr=NULL; }
-#define SafeRelease(ptr) if(ptr!=NULL) { ptr->Release(); }
+#undef RELEASE
+#ifdef __cplusplus
+#define RELEASE(x) if (x != NULL) {x->Release(); x = NULL;}
+#else
+#define RELEASE(x) if (x != NULL) {x->lpVtbl->Release(x); x = NULL;}
+#endif
 
-// ----- Global SRAM -----
-extern unsigned char SRAM[SRAM_SIZE];
+// TGA header structure
+typedef struct _tgaHeader {
+    uint8_t IDLength;
+    uint8_t CMapType;
+    uint8_t ImgType;
+    uint8_t CMapStartLo;
+    uint8_t CMapStartHi;
+    uint8_t CMapLengthLo;
+    uint8_t CMapLengthHi;
+    uint8_t CMapDepth;
+    uint8_t XOffSetLo;
+    uint8_t XOffSetHi;
+    uint8_t YOffSetLo;
+    uint8_t YOffSetHi;
+    uint8_t WidthLo;
+    uint8_t WidthHi;
+    uint8_t HeightLo;
+    uint8_t HeightHi;
+    uint8_t PixelDepth;
+    uint8_t ImageDescriptor;
+} TgaHeader;
 
-// ----- Timing -----
-extern float getTime();
+// Image types
+#define TGA_NULL      0
+#define TGA_CMAP      1
+#define TGA_TRUE      2
+#define TGA_MONO      3
+#define TGA_CMAP_RLE  9
+#define TGA_TRUE_RLE 10
+#define TGA_MONO_RLE 11
 
-extern int gRomSet;
+#define HACK_1(w) ((float)(w) - 0.5f) / (float)(w)
+#define HACK_0(w) 0.5f / (float)(w)
 
-#endif // GLOBAL_H
+typedef uint64_t QWORD;
+typedef int64_t  sQWORD;
+typedef int32_t  sDWORD;
+typedef uint16_t HWORD;
+typedef int16_t  sHWORD;
+typedef int8_t   sBYTE;
+typedef uint8_t  BIT
+
+#define SafeFree(ptr) if(ptr != NULL) { free(ptr); ptr = NULL; }
+#define SafeDelete(ptr) if(ptr != NULL) { delete ptr; ptr = NULL; }
+#define SafeRelease(ptr) if(ptr != NULL) { ptr->Release(); }
+#define SafeReleaseNoCheck(ptr) if(ptr != NULL) { ptr->Release(); }
+
+#define ToUpper(string) { char *dst = string; char *src = string; while(*src) { *(dst++) = toupper(*(src++)); } }
+
+#endif

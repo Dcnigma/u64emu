@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include <switch.h>
 #include "math.h"
 #include "ki.h"
 #include "iCPU.h"

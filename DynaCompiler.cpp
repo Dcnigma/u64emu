@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cmath>
-
+#include <switch.h>
 #include "ki.h"
 #include "iMain.h"
 #include "iCPU.h"

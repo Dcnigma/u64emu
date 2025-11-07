@@ -4,7 +4,7 @@
 #include "iMemory.h"    // Memory emulation routines
 #include "iRom.h"       // ROM (cart) emulation routines
 #include "hleMain.h"
-
+#include <switch.h>
 constexpr int DO_DELAY = 1;
 constexpr int NO_DELAY = 0;
 constexpr int LINK_OFFSET = 8;

@@ -1,6 +1,6 @@
 #ifndef DYNA_COMPILER_H
 #define DYNA_COMPILER_H
-
+#include <switch.h>
 #include <stdint.h>
 #include <stdbool.h>
 

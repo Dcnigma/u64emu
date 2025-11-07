@@ -1,7 +1,7 @@
 #include <cstdint>
 #include <cmath>        // for math.h
 #include <cstring>      // for memcpy, if needed
-
+#include <switch.h>
 #include "ki.h"
 #include "iMain.h"
 #include "iCPU.h"            // Core 4300 emulation routines

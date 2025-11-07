@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-
+#include <switch.h>
 typedef uint16_t WORD;
 typedef uint8_t  BYTE;
 

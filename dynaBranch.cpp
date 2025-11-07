@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include <switch.h>
 #include "DynaCompiler.h"
 #include "dynaNative.h"
 #include "dynaBranch_arm64.h"

@@ -5,7 +5,7 @@
 #include "dynaCompiler.h"
 #include "adsp2100.h"
 #include "hleDSP.h"
-
+#include <switch.h>
 #include <thread>
 #include <fstream>
 #include <chrono>

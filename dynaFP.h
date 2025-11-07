@@ -1,6 +1,6 @@
 #ifndef DYNA_FP
 #define DYNA_FP
-
+#include <switch.h>
 #include <cstdint>
 #include <cmath>
 #include <cstring>

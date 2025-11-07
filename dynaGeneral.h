@@ -1,6 +1,6 @@
 #ifndef DYNA_GENERAL
 #define DYNA_GENERAL
-
+#include <switch.h>
 extern WORD dynaOpSraEq(BYTE *cp,BYTE op0,BYTE op1,BYTE op2);
 extern WORD dynaOpSrlEq(BYTE *cp,BYTE op0,BYTE op1,BYTE op2);
 extern WORD dynaOpSllEq(BYTE *cp,BYTE op0,BYTE op1,BYTE op2);

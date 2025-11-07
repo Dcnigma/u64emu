@@ -4,6 +4,7 @@
 #include "DynaCompiler.h"
 #include "dynaNative.h"
 #include "iMain.h"
+#include <switch.h>
 
 // ------------------------
 // Floating point register offset

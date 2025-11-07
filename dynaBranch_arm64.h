@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "math.h"
 #include "ki.h"
-
+#include <switch.h>
 #include "DynaCompiler.h"
 #include "dynaNative.h"
 #include "dynaBranch_arm64.h"

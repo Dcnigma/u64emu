@@ -10,7 +10,7 @@
  */
 
 #include <stdint.h>
-
+#include <switch.h>
 #ifdef __cplusplus
 extern "C" {
 #endif

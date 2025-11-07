@@ -1,75 +1,71 @@
-#if !defined(AFX_EMUOBJECT_H__7627060B_55CA_11D3_854F_00A0C9AFD347__INCLUDED_)
-#define AFX_EMUOBJECT_H__7627060B_55CA_11D3_854F_00A0C9AFD347__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
-// EmuObject.h : header file
-//
-#include "global.h"
+#include <cstdint>
+#include <cstdio>
 #include "mmDisplay.h"
-//#include "mmSoundBuffer.h"
-#include "mmInputDevice.h"
-
+#include "mmSoundBuffer.h"
+#include "mmDirectInputDevice.h"
 #include "iMain.h"
-/////////////////////////////////////////////////////////////////////////////
-// CEmuObject dialog
 
-class CEmuObject  
-{
-// Construction
+typedef uint16_t WORD;
+typedef uint32_t DWORD;
+typedef int BOOL;
+
+class CPUState;   // forward declare
+class EmuState;   // forward declare
+
+class CEmuObject {
 public:
-	CEmuObject();   // standard constructor
-	~CEmuObject();
-	bool m_Open;
-	bool m_Debug;
-	bool m_IsWaveraceSE;
+    CEmuObject();
+    ~CEmuObject();
 
-// file we will emulate
-	char m_FileName[256];
+    bool m_Open;
+    bool m_Debug;
+    bool m_IsWaveraceSE;
 
-// our input device
-	mmInputDevice *m_InputDevice;
+    char m_FileName[256];
 
-// our 2d/3d display
-    mmDisplay *m_Display;
+    mmDirectInputDevice* m_InputDevice;
+    mmDisplay* m_Display;
+    mmDirectSoundDevice* m_DirectSoundDevice;
+    mmSoundBuffer* m_Audio;
 
-// emu stuff
-//	N64RomFile *m_RomFile;
-//	N64CPU *m_CPU;
+    EmuState* m;  // pointer to emu state
+    CPUState* r;  // pointer to CPU state
 
-// display info stuff
-	DWORD m_LastTime;
-	DWORD m_NumVSYNCs;
-	DWORD m_LastInstruction;
-	DWORD m_FirstVSYNCTime;
-	bool  m_3DActive;
+    DWORD m_LastTime;
+    DWORD m_NumVSYNCs;
+    DWORD m_LastInstruction;
+    DWORD m_FirstVSYNCTime;
+    bool  m_3DActive;
 
-// audio stuff
-	BOOL m_BadAudio;
-//	mmDirectSoundDevice *m_DirectSoundDevice;
-//	mmSoundBuffer *m_Audio;
-	DWORD m_AudioBufferPosition;
-	BOOL m_AudioReady;
-	DWORD m_AudioMisses;
-	DWORD m_AudioHits;
+    DWORD m_AudioBufferPosition;
+    bool m_AudioReady;
+    bool m_BadAudio;
 
- 
-	HRESULT Init();
-	HRESULT OpenFullScreen();
-	HRESULT OpenWindowed();
-	void Emulate(char *filename);
-	bool UpdateDisplay();
-	void UpdateAudio(DWORD offset);
-	void UpdateInfo();
-	void StopEmulation();
-	void OnClose();
- 
-protected:
- 
+    // Public interface
+    bool Init();
+    void Emulate(const char* filename);
+    bool UpdateDisplay();
+    void UpdateAudio(DWORD offset);
+    void UpdateInfo();
+    void StopEmulation();
+
+    // Input / Timer
+    void OnTimer();
+    void PollInput();
+
+    // Cleanup / Focus
+    bool DestroyWindow();
+    void OnDestroy();
+    void OnCancel();
+    void OnKillFocus(void* pNewWnd);
+
+    // Input handlers (stubbed)
+    void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
+    void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
+    void OnChar(UINT nChar, UINT nRepCnt, UINT nFlags);
+    void OnSysKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
+    void OnMouseMove(UINT nFlags, void* point);
+
+    bool OnInitDialog();
 };
-
-//{{AFX_INSERT_LOCATION}}
-// Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_EMUOBJECT_H__7627060B_55CA_11D3_854F_00A0C9AFD347__INCLUDED_)

@@ -1,6 +1,12 @@
 #ifndef iATA_H
 #define iATA_H
 
+#include <cstdint>  // for uint8_t
+
+// Type definitions
+typedef uint8_t BYTE;
+
+// Function declarations
 void iATAConstruct();
 void iATADestruct();
 bool iATAOpen();
@@ -12,6 +18,4 @@ void iATAWriteSectors();
 void iATADriveIdentify();
 BYTE *iATADataRead();
 
-
-
-#endif
+#endif // iATA_H
