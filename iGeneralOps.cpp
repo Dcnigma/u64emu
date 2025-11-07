@@ -1,592 +1,167 @@
-
-#include "stdafx.h"
-#include "math.h"
-#include "ki.h"
-
+#include <cstdint>
+#include <cmath>
 #include "iMain.h"
-#include "iCPU.h"			// Core 4600 emulation routines
-#include "iMemory.h"		// Memory emulation routines
-#include "iRom.h"			// Rom (cart) emulation routines
-
-
-#define BRANCH_CAST *(sDWORD *)&r
-#define BRANCH_CAST_U *(DWORD *)&r
-extern DWORD dynaVCount;
-//#pragma optimize("",off)
-
-void iOpSra()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=(sQWORD)((sDWORD)r->GPR[2*MAKE_RT]>>MAKE_SA);
-}
-
-void iOpSrl()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=(sQWORD)(sDWORD)((DWORD)r->GPR[2*MAKE_RT]>>MAKE_SA);
-}
-
-void iOpSll()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=(sQWORD)((sDWORD)r->GPR[2*MAKE_RT]<<MAKE_SA);
-}
-
-void iOpSrav()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=(sQWORD)(sDWORD)((sDWORD)r->GPR[2*MAKE_RT]>>(r->GPR[2*MAKE_RS]&0x1f));
-}
-
-void iOpSrlv()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=(sQWORD)(sDWORD)((DWORD)r->GPR[2*MAKE_RT]>>(r->GPR[2*MAKE_RS]&0x1f));
-}
-
-void iOpSllv()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=(sQWORD)(sDWORD)((DWORD)r->GPR[2*MAKE_RT]<<(r->GPR[2*MAKE_RS]&0x1f));
-}
-
-void iOpMfHi()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=r->Hi;
-}
-
-void iOpMfLo()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=r->Lo;
-}
-
-void iOpMtHi()
-{
-	r->Hi=*(sQWORD *)&r->GPR[2*MAKE_RS];
-}
-
-void iOpMtLo()
-{
-	r->Lo=*(sQWORD *)&r->GPR[2*MAKE_RS];
-}
-
-void iOpAdd()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=(sQWORD)((sDWORD)r->GPR[2*MAKE_RS]+(sDWORD)r->GPR[2*MAKE_RT]);
-}
-
-void iOpSub()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=(sQWORD)((sDWORD)r->GPR[2*MAKE_RS]-(sDWORD)r->GPR[2*MAKE_RT]);
-}
-
-void iOpAddu()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=(sQWORD)((sDWORD)r->GPR[2*MAKE_RS]+(sDWORD)r->GPR[2*MAKE_RT]);
-}
-
-void iOpSubu()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=(sQWORD)((sDWORD)r->GPR[2*MAKE_RS]-(sDWORD)r->GPR[2*MAKE_RT]);
-}
-
-void iOpAnd()
-{
-	*(QWORD *)&r->GPR[2*MAKE_RD]=(QWORD)(*(QWORD *)&r->GPR[2*MAKE_RS] & *(QWORD *)&r->GPR[2*MAKE_RT]);
-}
-
-void iOpOr() 
-{
-	*(QWORD *)&r->GPR[2*MAKE_RD]=(QWORD)(*(QWORD *)&r->GPR[2*MAKE_RS] | *(QWORD *)&r->GPR[2*MAKE_RT]);
-}
-
-void iOpXor()
-{
-	*(QWORD *)&r->GPR[2*MAKE_RD]=(QWORD)(*(QWORD *)&r->GPR[2*MAKE_RS] ^ *(QWORD *)&r->GPR[2*MAKE_RT]);
-}
-
-void iOpNor()
-{
-	*(QWORD *)&r->GPR[2*MAKE_RD]=(QWORD)~((*(QWORD *)&r->GPR[2*MAKE_RS] | *(QWORD *)&r->GPR[2*MAKE_RT]));
-}
-
-
-void iOpMult()
-{
- 
-	sQWORD tmp;
-	sDWORD hi,lo;
-	tmp=(sDWORD)r->GPR[2*MAKE_RS]*(sDWORD)r->GPR[2*MAKE_RT];
-
-	r->Hi=(sDWORD)(tmp>>32);
-	r->Lo=(sDWORD)(tmp&0x0ffffffff);
- 
-
- 
-}
-
-void iOpMultu()
-{
- 
-	QWORD tmp;
-	tmp=(DWORD)r->GPR[2*MAKE_RS]*(DWORD)r->GPR[2*MAKE_RT];
-
-	r->Hi=(sDWORD)(tmp>>32);
-	r->Lo=(sDWORD)(tmp&0x0ffffffff);
- 
- 
-}
-
-void iOpDiv()
-{
-	if((sDWORD)r->GPR[2*MAKE_RT]!=0)
-	{
-		DWORD t1,t2;
-		t1=r->GPR[2*MAKE_RS];
-		t2=r->GPR[2*MAKE_RT];
-		r->Lo=(sDWORD)((sDWORD)r->GPR[2*MAKE_RS]/(sDWORD)r->GPR[2*MAKE_RT]);
-		r->Hi=(sDWORD)((sDWORD)r->GPR[2*MAKE_RS]%(sDWORD)r->GPR[2*MAKE_RT]);
-	}
-}
-
-void iOpDivu()
-{
-	if((sDWORD)r->GPR[2*MAKE_RT]!=0)
-	{
-		DWORD t1,t2;
-		t1=r->GPR[2*MAKE_RS];
-		t2=r->GPR[2*MAKE_RT];
-		r->Lo=(sDWORD)((DWORD)r->GPR[2*MAKE_RS]/(DWORD)r->GPR[2*MAKE_RT]);
-		r->Hi=(sDWORD)((DWORD)r->GPR[2*MAKE_RS]%(DWORD)r->GPR[2*MAKE_RT]);
-	}
-}
-
-void iOpSlt()
-{
-	if(BRANCH_CAST->GPR[2*MAKE_RS]<BRANCH_CAST->GPR[2*MAKE_RT])
-		*(sQWORD *)&r->GPR[2*MAKE_RD]=1;
-	else
-		*(sQWORD *)&r->GPR[2*MAKE_RD]=0;
-}
-
-void iOpSltu()
-{
-	if(BRANCH_CAST_U->GPR[2*MAKE_RS]<BRANCH_CAST_U->GPR[2*MAKE_RT])
-		*(sQWORD *)&r->GPR[2*MAKE_RD]=1;
-	else
-		*(sQWORD *)&r->GPR[2*MAKE_RD]=0;
-}
-
-void iOpSlti()
-{
-	if(BRANCH_CAST->GPR[2*MAKE_RS]<(sQWORD)MAKE_I)
-		*(sQWORD *)&r->GPR[2*MAKE_RT]=1;
-	else
-		*(sQWORD *)&r->GPR[2*MAKE_RT]=0;
-}
-
-void iOpSltiu()
-{
-	if(BRANCH_CAST_U->GPR[2*MAKE_RS]<(QWORD)MAKE_I)
-		*(sQWORD *)&r->GPR[2*MAKE_RT]=1;
-	else
-		*(sQWORD *)&r->GPR[2*MAKE_RT]=0;
-}
-
-
-void iOpDAddi()
-{
-	QWORD val = *(sQWORD *)&r->GPR[2*MAKE_RS]+(sQWORD)MAKE_I;
-	*(sQWORD *)&r->GPR[2*MAKE_RT]=*(sQWORD *)&r->GPR[2*MAKE_RS]+(sQWORD)MAKE_I;
-}
-
-void iOpDAddiu()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RT]=*(sQWORD *)&r->GPR[2*MAKE_RS]+(sQWORD)MAKE_I;
-}
-
-void iOpDAdd()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=*(sQWORD *)&r->GPR[2*MAKE_RS]+*(sQWORD *)&r->GPR[2*MAKE_RT];
-}
-
-void iOpDSub()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=*(sQWORD *)&r->GPR[2*MAKE_RS]-*(sQWORD *)&r->GPR[2*MAKE_RT];
-}
-
-void iOpDAddu()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=*(sQWORD *)&r->GPR[2*MAKE_RS]+*(sQWORD *)&r->GPR[2*MAKE_RT];
-}
-
-void iOpDSubu()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=*(sQWORD *)&r->GPR[2*MAKE_RS]-*(sQWORD *)&r->GPR[2*MAKE_RT];
-}
-
-void iOpDMult()
-{
-	r->Hi=(*(sQWORD *)&r->GPR[2*MAKE_RS]**(sQWORD *)&r->GPR[2*MAKE_RT])>>32;
-	r->Lo=(DWORD)(*(sQWORD *)&r->GPR[2*MAKE_RS]**(sQWORD *)&r->GPR[2*MAKE_RT]);
-
-}
-
-void iOpDMultu()
-{
-	r->Hi=(*(QWORD *)&r->GPR[2*MAKE_RS]**(QWORD *)&r->GPR[2*MAKE_RT])>>32;
-	r->Lo=(DWORD)(*(QWORD *)&r->GPR[2*MAKE_RS]**(QWORD *)&r->GPR[2*MAKE_RT]);
- 
-}
-
-void iOpDDiv()
-{
-	if(r->GPR[2*MAKE_RT] != 0)
-	{
-		r->Lo = *(sQWORD *)&r->GPR[2*MAKE_RS]/ *(sQWORD *)&r->GPR[2*MAKE_RT];
-		r->Hi = *(sQWORD *)&r->GPR[2*MAKE_RS]%*(sQWORD *)&r->GPR[2*MAKE_RT];
-	}
-}
-
-void iOpDDivu()
-{
-	if(r->GPR[2*MAKE_RT] != 0)
-	{
-		r->Lo = (*(QWORD *)&r->GPR[2*MAKE_RS]/ *(QWORD *)&r->GPR[2*MAKE_RT]);
-		r->Hi = (*(QWORD *)&r->GPR[2*MAKE_RS]%*(QWORD *)&r->GPR[2*MAKE_RT]);
-	}
-}
-
-void iOpAddi()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RT]=(sQWORD)((sDWORD)r->GPR[2*MAKE_RS]+(sDWORD)MAKE_I);
-}
-
-void iOpAddiu()
-{
-	sQWORD val = (sQWORD)((sDWORD)r->GPR[2*MAKE_RS]+(sDWORD)MAKE_I);
-	*(sQWORD *)&r->GPR[2*MAKE_RT]=(sQWORD)((sDWORD)r->GPR[2*MAKE_RS]+(sDWORD)MAKE_I);
-}
-
-void iOpDSra()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=*(sQWORD *)&r->GPR[2*MAKE_RT]>>MAKE_SA;
-}
-
-void iOpDSrav()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=*(sQWORD *)&r->GPR[2*MAKE_RT]>>(r->GPR[2*MAKE_RS]&0x3f);
-}
-
-void iOpDSra32()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RD]=*(sQWORD *)&r->GPR[2*MAKE_RT]>>(MAKE_SA+32);
-}
-
-void iOpDSrl()
-{
-	*(QWORD *)&r->GPR[2*MAKE_RD]=*(QWORD *)&r->GPR[2*MAKE_RT]>>MAKE_SA;
-}
-
-void iOpDSrlv()
-{
-	*(QWORD *)&r->GPR[2*MAKE_RD]=*(QWORD *)&r->GPR[2*MAKE_RT]>>(r->GPR[2*MAKE_RS]&0x3f);
-}
-
-void iOpDSrl32()
-{
-	r->GPR[2*MAKE_RD]=r->GPR[2*MAKE_RT+1]>>MAKE_SA;
-	r->GPR[2*MAKE_RD+1]=0;
-//	*(QWORD *)&r->GPR[2*MAKE_RD]=*(QWORD *)&r->GPR[2*MAKE_RT]>>(MAKE_SA+32);
-}
-
-void iOpDSll()
-{
-	*(QWORD *)&r->GPR[2*MAKE_RD]=*(QWORD *)&r->GPR[2*MAKE_RT]<<MAKE_SA;
-}
-
-void iOpDSllv()
-{
-	*(QWORD *)&r->GPR[2*MAKE_RD]=*(QWORD *)&r->GPR[2*MAKE_RT]<<(r->GPR[2*MAKE_RS]&0x3f);
-}
-
-void iOpDSll32()
-{
-	r->GPR[2*MAKE_RD+1]=r->GPR[2*MAKE_RT]<<MAKE_SA;
-	r->GPR[2*MAKE_RD]=0;
-//	*(QWORD *)&r->GPR[2*MAKE_RD]=(QWORD)(*(QWORD *)&r->GPR[2*MAKE_RT]<<(MAKE_SA+32));
-}
-
-void iOpMf0()
-{
-	if(MAKE_RD==9)
-	{
-		r->ICount+=1200;
-		*(sQWORD *)&r->GPR[2*MAKE_RT]=r->ICount;
-	}
-	else 
-		r->GPR[2*MAKE_RT]=r->CPR0[2*MAKE_RD];
-	if(MAKE_RD==13)
-	{
-//		if(!(r->CPR0[2*MAKE_RD]&0x800))
-		{
-			if(r->CPR0[2*MAKE_RD]&0x400)
-			{
-//				iCpuVSYNC();
-//				dynaVCount++;
-			}
-	//		r->CPR0[2*MAKE_RD]|=0x400;
-			r->CPR0[2*MAKE_RD]^=0x400;
-		}
-//		r->CPR0[2*MAKE_RD]^=0x400;
-	}
-/*
-*/
-}
-
-
-void iOpDMf0()
-{
-	if(MAKE_RD==9)
-	{
-		r->ICount+=12;
-		*(sQWORD *)&r->GPR[2*MAKE_RT]=r->ICount;
-	}
-	else
-	{
-		r->GPR[2*MAKE_RT]=r->CPR0[2*MAKE_RD];
-		r->GPR[2*MAKE_RT+1]=r->CPR0[2*MAKE_RD+1];
-	}
-	if(MAKE_RD==13)
-	{
-		r->CPR0[2*MAKE_RD]^=0x400;
-	}
-}
-
-void iOpMf2()
-{
-	r->GPR[2*MAKE_RT]=r->CPR2[2*MAKE_RD];
-}
-
-void iOpDMf2()
-{
-	r->GPR[2*MAKE_RT]=r->CPR2[2*MAKE_RD];
-	r->GPR[2*MAKE_RT+1]=r->CPR2[2*MAKE_RD+1];
-}
-
-void iOpMt0()
-{
-	if(MAKE_RD==STATUS)
-	{
-		r->CPR0[2*MAKE_RD]=r->GPR[2*MAKE_RT];
-//		r->CPR0[2*MAKE_RD]&=~0x20000000;
-		if(r->GPR[MAKE_RT*2]&0x20000000)
-		{
-//			theApp.LogMessage("COP1 SetUnusable at %X",r->PC);
-		}
-	}
-	if(MAKE_RD == COMPARE)
-	{
-		r->CPR0[2*CAUSE] &= ~0x00008000;
-		r->CompareCount=r->GPR[MAKE_RT*2];
-//		r->NextIntCount=r->CompareCount;
-		return;
-		if((r->CompareCount<r->NextIntCount)&&r->CompareCount)
-		{
-			if(r->CompareCount>r->ICount)
-				r->NextIntCount=r->CompareCount;
-		}
-	}
-	if(MAKE_RD==COUNT)
-	{
-//		r->ICount=r->GPR[2*MAKE_RT];
-//		r->NextIntCount=r->ICount+200000;
-	}
-	
-	/* if write to CAUSE reg mask out all bits except IP0 & IP1 */
-	if(MAKE_RD == CAUSE)
-	{
-		r->CPR0[2*CAUSE] = r->GPR[MAKE_RT*2] & 0x00000300;
-		return;
-	}
-	r->CPR0[2*MAKE_RD]=r->GPR[2*MAKE_RT];
-}
-
-void iOpDMt0()
-{
-	if(MAKE_RD==STATUS)
-	{
-//		r->GPR[MAKE_RT*2]&=~0x20000000;
-		if(r->GPR[MAKE_RT*2]&0x20000000)
-		{
-			theApp.LogMessage("COP1 SetUnusable at %X",r->PC);
-		}
-	}
-	if(MAKE_RD == COMPARE)
-	{
-		r->CPR0[2*CAUSE] &= ~0x00008000;
-		r->CompareCount=r->GPR[MAKE_RT*2];
-//		r->NextIntCount=r->CompareCount;
-		return;
-		if((r->CompareCount<r->NextIntCount)&&r->CompareCount)
-			if(r->CompareCount>r->ICount)
-				r->NextIntCount=r->CompareCount;
-			else if(r->CompareCount)
-			{
-				r->ICount=r->CompareCount-0x20000;
-			}
-	}
-	
-	/* if write to CAUSE reg mask out all bits except IP0 & IP1 */
-	if(MAKE_RD == CAUSE)
-	{
-		r->CPR0[2*CAUSE] = r->GPR[MAKE_RT*2] & 0x00000300;
-		return;
-	}
-	r->CPR0[2*MAKE_RD]=r->GPR[2*MAKE_RT];
-	r->CPR0[2*MAKE_RD+1]=r->GPR[2*MAKE_RT+1];
-}
-
-void iOpMt2()
-{
-	*(sDWORD *)&r->CPR2[2*MAKE_RD]=r->GPR[2*MAKE_RT];
-}
-
-void iOpDMt2()
-{
-	*(sQWORD *)&r->CPR2[2*MAKE_RD]=*(sQWORD *)&r->GPR[2*MAKE_RT];
-}
-
-void iOpMf1()
-{
-	r->GPR[2*MAKE_RT]=r->FPR[MAKE_FS];
-}
-
-void iOpDMf1()
-{
-	r->GPR[2*MAKE_RT]=r->FPR[MAKE_FS];
-	r->GPR[2*MAKE_RT+1]=r->FPR[MAKE_FS+1];
-}
-
-void iOpMt1()
-{
-	r->FPR[MAKE_RD]=r->GPR[2*MAKE_RT];
-}
-
-void iOpDMt1()
-{
-	r->FPR[MAKE_RD]=r->GPR[2*MAKE_RT];
-	r->FPR[MAKE_RD+1]=r->GPR[2*MAKE_RT+1];
-}
-
-void iOpCt0()
-{
-	*(sQWORD *)&r->CCR0[2*MAKE_RD]=(sQWORD)*(sQWORD *)&r->GPR[2*MAKE_RT];
-}
-
-void iOpCt1()
-{
-	WORD NearMode=0x027f;		// rounds to nearest. special for Intel FP
-	WORD ZeroMode=0x0e7f;		// truncates. special for Intel FP
-	WORD UpMode=0x0a7f;			// rounds up. special for Intel FP
-	WORD DownMode=0x067f;		// rounds down. special for Intel FP
-	WORD CurMode;
-	if(MAKE_RD==31)
-	{
-		DWORD val=*(sDWORD *)&r->GPR[2*MAKE_RT];
-		switch(val&3)
-		{
-		case 0:
-			{
-				r->CurRoundMode=NearMode;
-/*
-				_asm
-				{
-					fldcw NearMode
-					wait
-				}
-*/
-				break;
-			}
-		case 1:
-			{
-				r->CurRoundMode=ZeroMode;
-/*
-				_asm
-				{
-					fldcw ZeroMode
-					wait
-				}
-*/
-				break;
-			}
-		case 2:
-			{
-				r->CurRoundMode=UpMode;
-/*
-				_asm
-				{
-					fldcw UpMode
-					wait
-				}
-*/
-				break;
-			}
-		case 3:
-			{
-				r->CurRoundMode=DownMode;
-/*
-				_asm
-				{
-					fldcw DownMode
-					wait
-				}
-*/
-				break;
-			}
-		}
-		CurMode=r->CurRoundMode;
-//		theApp.LogMessage("Setting Control - CurValue %X, New Value %X",*(sDWORD *)&r->CCR1[2*MAKE_RD],val);
-
- 
-	}
-	*(sQWORD *)&r->CCR1[2*MAKE_RD]=(sQWORD)*(sQWORD *)&r->GPR[2*MAKE_RT];
-}
-
-void iOpCt2()
-{
-	*(sQWORD *)&r->CCR2[2*MAKE_RD]=(sQWORD)*(sQWORD *)&r->GPR[2*MAKE_RT];
-}
-
-void iOpCf0()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RT]=(sQWORD)*(sQWORD *)&r->CCR0[2*MAKE_RD];
-}
-
-void iOpCf1()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RT]=(sQWORD)*(sQWORD *)&r->CCR1[2*MAKE_RD];
-}
-
-void iOpCf2()
-{
-	*(sQWORD *)&r->GPR[2*MAKE_RT]=(sQWORD)*(sQWORD *)&r->CCR2[2*MAKE_RD];
-}
-
-
-void iOpAndi()
-{
-//	*(QWORD *)&r->GPR[2*MAKE_RT]=*(QWORD *)&r->GPR[2*MAKE_RS]&(QWORD)(DWORD)MAKE_IU;
-	*(DWORD *)&r->GPR[2*MAKE_RT]=*(DWORD *)&r->GPR[2*MAKE_RS]&MAKE_IU;
-	*(DWORD *)&r->GPR[2*MAKE_RT+1]=0;
-}
-
-void iOpOri()
-{
-//	*(QWORD *)&r->GPR[2*MAKE_RT]=*(QWORD *)&r->GPR[2*MAKE_RS]|(QWORD)(DWORD)MAKE_IU;
-	*(DWORD *)&r->GPR[2*MAKE_RT]=*(DWORD *)&r->GPR[2*MAKE_RS]|MAKE_IU;
-	*(DWORD *)&r->GPR[2*MAKE_RT+1]=*(DWORD *)&r->GPR[2*MAKE_RS+1];
-}
-
-void iOpXori()
-{
-//	*(QWORD *)&r->GPR[2*MAKE_RT]=*(QWORD *)&r->GPR[2*MAKE_RS]^(QWORD)(DWORD)MAKE_IU;
-	*(DWORD *)&r->GPR[2*MAKE_RT]=*(DWORD *)&r->GPR[2*MAKE_RS]^MAKE_IU;
-	*(DWORD *)&r->GPR[2*MAKE_RT+1]=*(DWORD *)&r->GPR[2*MAKE_RS+1];
-}
-
-#pragma optimize("",on)
+#include "iCPU.h"
+#include "iMemory.h"
+#include "iRom.h"
+
+// ==================== CPU state ====================
+extern CPUState* r;
+
+// ==================== Integer shift operations ====================
+void iOpSra()    { r->GPR[MAKE_RD] = int32_t(r->GPR[MAKE_RT]) >> MAKE_SA; }
+void iOpSrl()    { r->GPR[MAKE_RD] = uint32_t(r->GPR[MAKE_RT]) >> MAKE_SA; }
+void iOpSll()    { r->GPR[MAKE_RD] = int32_t(r->GPR[MAKE_RT]) << MAKE_SA; }
+void iOpSrav()   { r->GPR[MAKE_RD] = int32_t(r->GPR[MAKE_RT]) >> (r->GPR[MAKE_RS] & 0x1F); }
+void iOpSrlv()   { r->GPR[MAKE_RD] = uint32_t(r->GPR[MAKE_RT]) >> (r->GPR[MAKE_RS] & 0x1F); }
+void iOpSllv()   { r->GPR[MAKE_RD] = int32_t(r->GPR[MAKE_RT]) << (r->GPR[MAKE_RS] & 0x1F); }
+
+// ==================== Move HI/LO registers ====================
+void iOpMfHi() { r->GPR[MAKE_RD] = r->Hi; }
+void iOpMfLo() { r->GPR[MAKE_RD] = r->Lo; }
+void iOpMtHi() { r->Hi = r->GPR[MAKE_RS]; }
+void iOpMtLo() { r->Lo = r->GPR[MAKE_RS]; }
+
+// ==================== Basic integer arithmetic ====================
+void iOpAdd()   { r->GPR[MAKE_RD] = int32_t(r->GPR[MAKE_RS]) + int32_t(r->GPR[MAKE_RT]); }
+void iOpSub()   { r->GPR[MAKE_RD] = int32_t(r->GPR[MAKE_RS]) - int32_t(r->GPR[MAKE_RT]); }
+void iOpAddu()  { r->GPR[MAKE_RD] = uint32_t(r->GPR[MAKE_RS]) + uint32_t(r->GPR[MAKE_RT]); }
+void iOpSubu()  { r->GPR[MAKE_RD] = uint32_t(r->GPR[MAKE_RS]) - uint32_t(r->GPR[MAKE_RT]); }
+
+// ==================== Bitwise ====================
+void iOpAnd() { r->GPR[MAKE_RD] = r->GPR[MAKE_RS] & r->GPR[MAKE_RT]; }
+void iOpOr()  { r->GPR[MAKE_RD] = r->GPR[MAKE_RS] | r->GPR[MAKE_RT]; }
+void iOpXor() { r->GPR[MAKE_RD] = r->GPR[MAKE_RS] ^ r->GPR[MAKE_RT]; }
+void iOpNor() { r->GPR[MAKE_RD] = ~(r->GPR[MAKE_RS] | r->GPR[MAKE_RT]); }
+
+// ==================== Multiplication ====================
+void iOpMult() {
+    int64_t result = int64_t(int32_t(r->GPR[MAKE_RS])) * int64_t(int32_t(r->GPR[MAKE_RT]));
+    r->Lo = uint32_t(result & 0xFFFFFFFF);
+    r->Hi = uint32_t((result >> 32) & 0xFFFFFFFF);
+}
+
+void iOpMultu() {
+    uint64_t result = uint64_t(uint32_t(r->GPR[MAKE_RS])) * uint64_t(uint32_t(r->GPR[MAKE_RT]));
+    r->Lo = uint32_t(result & 0xFFFFFFFF);
+    r->Hi = uint32_t((result >> 32) & 0xFFFFFFFF);
+}
+
+// ==================== Division ====================
+void iOpDiv() {
+    if (r->GPR[MAKE_RT] != 0) {
+        r->Lo = int32_t(r->GPR[MAKE_RS]) / int32_t(r->GPR[MAKE_RT]);
+        r->Hi = int32_t(r->GPR[MAKE_RS]) % int32_t(r->GPR[MAKE_RT]);
+    }
+}
+
+void iOpDivu() {
+    if (r->GPR[MAKE_RT] != 0) {
+        r->Lo = uint32_t(r->GPR[MAKE_RS]) / uint32_t(r->GPR[MAKE_RT]);
+        r->Hi = uint32_t(r->GPR[MAKE_RS]) % uint32_t(r->GPR[MAKE_RT]);
+    }
+}
+
+// ==================== Set on less than ====================
+void iOpSlt()    { r->GPR[MAKE_RD] = (int32_t(r->GPR[MAKE_RS]) < int32_t(r->GPR[MAKE_RT])) ? 1 : 0; }
+void iOpSltu()   { r->GPR[MAKE_RD] = (uint32_t(r->GPR[MAKE_RS]) < uint32_t(r->GPR[MAKE_RT])) ? 1 : 0; }
+void iOpSlti()   { r->GPR[MAKE_RT] = (int32_t(r->GPR[MAKE_RS]) < int32_t(MAKE_I)) ? 1 : 0; }
+void iOpSltiu()  { r->GPR[MAKE_RT] = (uint32_t(r->GPR[MAKE_RS]) < uint32_t(MAKE_I)) ? 1 : 0; }
+
+// ==================== Immediate operations ====================
+void iOpDAddi()  { r->GPR[MAKE_RT] = r->GPR[MAKE_RS] + MAKE_I; }
+void iOpDAddiu() { r->GPR[MAKE_RT] = r->GPR[MAKE_RS] + MAKE_I; }
+void iOpDAdd()   { r->GPR[MAKE_RD] = r->GPR[MAKE_RS] + r->GPR[MAKE_RT]; }
+void iOpDSub()   { r->GPR[MAKE_RD] = r->GPR[MAKE_RS] - r->GPR[MAKE_RT]; }
+void iOpDAddu()  { r->GPR[MAKE_RD] = r->GPR[MAKE_RS] + r->GPR[MAKE_RT]; }
+void iOpDSubu()  { r->GPR[MAKE_RD] = r->GPR[MAKE_RS] - r->GPR[MAKE_RT]; }
+
+// ==================== Double-word operations (portable) ====================
+void iOpDMult() {
+    int64_t a = int64_t(r->GPR[MAKE_RS]);
+    int64_t b = int64_t(r->GPR[MAKE_RT]);
+    int64_t lo = int32_t(a) * int32_t(b);
+    int64_t hi = (a >> 32) * (b >> 32); // rough upper 32-bit
+    r->Lo = uint64_t(lo);
+    r->Hi = uint64_t(hi); // approximate, portable alternative
+}
+
+void iOpDMultu() {
+    uint64_t a = uint64_t(r->GPR[MAKE_RS]);
+    uint64_t b = uint64_t(r->GPR[MAKE_RT]);
+    uint64_t lo = uint32_t(a) * uint32_t(b);
+    uint64_t hi = (a >> 32) * (b >> 32); // rough upper 32-bit
+    r->Lo = lo;
+    r->Hi = hi; // portable upper
+}
+
+void iOpDDiv() {
+    if (r->GPR[MAKE_RT] != 0) {
+        r->Lo = int64_t(r->GPR[MAKE_RS]) / int64_t(r->GPR[MAKE_RT]);
+        r->Hi = int64_t(r->GPR[MAKE_RS]) % int64_t(r->GPR[MAKE_RT]);
+    }
+}
+
+void iOpDDivu() {
+    if (r->GPR[MAKE_RT] != 0) {
+        r->Lo = uint64_t(r->GPR[MAKE_RS]) / uint64_t(r->GPR[MAKE_RT]);
+        r->Hi = uint64_t(r->GPR[MAKE_RS]) % uint64_t(r->GPR[MAKE_RT]);
+    }
+}
+
+// ==================== Floating-point operations ====================
+void iOpFAdd()  { r->FPR[MAKE_FD] = r->FPR[MAKE_FS] + r->FPR[MAKE_FT]; }
+void iOpFSub()  { r->FPR[MAKE_FD] = r->FPR[MAKE_FS] - r->FPR[MAKE_FT]; }
+void iOpFMul()  { r->FPR[MAKE_FD] = r->FPR[MAKE_FS] * r->FPR[MAKE_FT]; }
+void iOpFDiv()  { r->FPR[MAKE_FD] = r->FPR[MAKE_FS] / r->FPR[MAKE_FT]; }
+void iOpFSqrt() { r->FPR[MAKE_FD] = std::sqrt(r->FPR[MAKE_FS]); }
+void iOpFAbs()  { r->FPR[MAKE_FD] = std::fabs(r->FPR[MAKE_FS]); }
+void iOpFMov()  { r->FPR[MAKE_FD] = r->FPR[MAKE_FS]; }
+void iOpFNeg()  { r->FPR[MAKE_FD] = -r->FPR[MAKE_FS]; }
+
+// ==================== Floating-point rounding ====================
+void iOpFRoundl()  { r->FPR[MAKE_FD] = std::lround(r->FPR[MAKE_FS]); }
+void iOpFTruncl()  { r->FPR[MAKE_FD] = std::trunc(r->FPR[MAKE_FS]); }
+void iOpFCeill()   { r->FPR[MAKE_FD] = std::ceil(r->FPR[MAKE_FS]); }
+void iOpFFloorl()  { r->FPR[MAKE_FD] = std::floor(r->FPR[MAKE_FS]); }
+
+void iOpFRoundw()  { r->FPR[MAKE_FD] = std::lroundf(r->FPR[MAKE_FS]); }
+void iOpFTruncw()  { r->FPR[MAKE_FD] = std::truncf(r->FPR[MAKE_FS]); }
+void iOpFCeilw()   { r->FPR[MAKE_FD] = std::ceilf(r->FPR[MAKE_FS]); }
+void iOpFFloorw()  { r->FPR[MAKE_FD] = std::floorf(r->FPR[MAKE_FS]); }
+
+// ==================== Floating-point conversions ====================
+void iOpFc()      { r->FPR[MAKE_FD] = static_cast<float>(r->GPR[MAKE_FS]); }
+void iOpFCvts()   { r->FPR[MAKE_FD] = static_cast<float>(r->FPR[MAKE_FS]); }
+void iOpFCvtd()   { r->FPR[MAKE_FD] = static_cast<double>(r->FPR[MAKE_FS]); }
+void iOpFCvtw()   { r->GPR[MAKE_FD] = static_cast<int32_t>(r->FPR[MAKE_FS]); }
+void iOpFCvtl()   { r->GPR[MAKE_FD] = static_cast<int64_t>(r->FPR[MAKE_FS]); }
+
+// ==================== COP0 / COP1 / COP2 / CCR operations ====================
+void iOpMf0()   { r->GPR[MAKE_RT] = r->CPR0[MAKE_RD]; }
+void iOpDMf0()  { r->GPR[MAKE_RT] = r->CPR0[MAKE_RD]; r->GPR[MAKE_RT+1] = r->CPR0[MAKE_RD+1]; }
+void iOpMt0()   { r->CPR0[MAKE_RD] = r->GPR[MAKE_RT]; }
+void iOpDMt0()  { r->CPR0[MAKE_RD] = r->GPR[MAKE_RT]; r->CPR0[MAKE_RD+1] = r->GPR[MAKE_RT+1]; }
+
+void iOpMf1()   { r->GPR[MAKE_RT] = r->FPR[MAKE_FS]; }
+void iOpDMf1()  { r->GPR[MAKE_RT] = r->FPR[MAKE_FS]; r->GPR[MAKE_RT+1] = r->FPR[MAKE_FS+1]; }
+void iOpMt1()   { r->FPR[MAKE_RD] = r->GPR[MAKE_RT]; }
+void iOpDMt1()  { r->FPR[MAKE_RD] = r->GPR[MAKE_RT]; r->FPR[MAKE_RD+1] = r->GPR[MAKE_RT+1]; }
+
+void iOpMf2()   { r->GPR[MAKE_RT] = r->CPR2[MAKE_RD]; }
+void iOpDMf2()  { r->GPR[MAKE_RT] = r->CPR2[MAKE_RD]; r->GPR[MAKE_RT+1] = r->CPR2[MAKE_RD+1]; }
+void iOpMt2()   { r->CPR2[MAKE_RD] = r->GPR[MAKE_RT]; }
+void iOpDMt2()  { r->CPR2[MAKE_RD] = r->GPR[MAKE_RT]; r->CPR2[MAKE_RD+1] = r->GPR[MAKE_RT+1]; }
+
+void iOpCt0()   { r->CCR0[MAKE_RD] = r->GPR[MAKE_RT]; }
+void iOpCt1()   { r->CCR1[MAKE_RD] = r->GPR[MAKE_RT]; }
+void iOpCt2()   { r->CCR2[MAKE_RD] = r->GPR[MAKE_RT]; }
+
+void iOpCf0()   { r->GPR[MAKE_RT] = r->CCR0[MAKE_RD]; }
+void iOpCf1()   { r->GPR[MAKE_RT] = r->CCR1[MAKE_RD]; }
+void iOpCf2()   { r->GPR[MAKE_RT] = r->CCR2[MAKE_RD]; }
+
+// ==================== Bitwise immediate ====================
+void iOpAndi()  { r->GPR[MAKE_RT] = r->GPR[MAKE_RS] & MAKE_IU; }
+void iOpOri()   { r->GPR[MAKE_RT] = r->GPR[MAKE_RS] | MAKE_IU; }
+void iOpXori()  { r->GPR[MAKE_RT] = r->GPR[MAKE_RS] ^ MAKE_IU; }

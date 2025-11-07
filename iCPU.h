@@ -1,14 +1,23 @@
 #ifndef ICPU_H
 #define ICPU_H
 
+#include <cstdint>
+#include <thread>
+
+// Type aliases for compatibility
+using DWORD = uint32_t;
+using UINT  = unsigned int;
+
 #define PATCH_SIN 16
 #define PATCH_COSIN 17
 
+// Forward declarations
 extern void iCpuConstruct();
 extern void iCpuDestruct();
 extern void iCpuReset();
-extern UINT8 iCpuThreadProc();
-extern UINT8 iDspThreadProc();
+extern UINT iCpuThreadProc();
+extern UINT iDspThreadProc();
+
 extern void iOpSpecial();
 extern void iOpRegimm();
 extern void iOpCop0();
@@ -45,14 +54,18 @@ extern void iCpuHelper(DWORD OpCode);
 extern void iCpuVSYNC();
 extern void iCpuCheckVSYNC();
 
-extern HANDLE iCpuThreadId;
-extern HANDLE iDspThreadId;
-extern DWORD iCpuNextVSYNC;
-extern bool iCpuResetVSYNC;
 extern void iCpuSaveGame();
 extern void iCpuLoadGame();
 extern void iCpuCheckFPU();
-
 extern void iCpuDoNextOp();
 extern void iCpuStepDSP();
-#endif
+
+// Modern thread handles using std::thread
+extern std::thread iCpuThread;
+extern std::thread iDspThread;
+
+// CPU/Emulator state
+extern DWORD iCpuNextVSYNC;
+extern bool iCpuResetVSYNC;
+
+#endif // ICPU_H

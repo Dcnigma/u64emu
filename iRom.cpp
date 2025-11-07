@@ -1,359 +1,161 @@
-
-#include "stdafx.h"
-#include "math.h"
-#include "ki.h"
-
+#include "iRom.h"
+#include "iMemory.h"
+#include "iCPU.h"
 #include "iMain.h"
 
-#include "iCPU.h"			// Core 4600 emulation routines
-#include "iMemory.h"		// Memory emulation routines
-#include "iRom.h"			// Rom (cart) emulation routines
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <iostream>
 
-WORD EndianChangeMode;
-FILE *iRomFile;
+WORD EndianChangeMode = 2;
+std::ifstream iRomFileStream;
 WORD iRomNumPages;
-#define ROM_PAGE_SIZE 0x20000  //128K
-BYTE *iRomPageMap;
+constexpr size_t ROM_PAGE_SIZE = 0x20000;  // 128 KB
+BYTE* iRomPageMap = nullptr;
+N64RomStruct* rom = nullptr;
 
-
-void iRomConstruct()
-{
-	rom=(N64RomStruct *)malloc(sizeof(N64RomStruct));
-	rom->Image=NULL;
-	iRomNumPages=0;
-	iRomPageMap=NULL;
-	iRomFile=NULL;
+void iRomConstruct() {
+    rom = new N64RomStruct{};
+    rom->Image = nullptr;
+    iRomNumPages = 0;
+    iRomPageMap = nullptr;
 }
 
-void iRomDestruct()
-{
-	if(iRomFile)
-	{
-		fclose(iRomFile);
-		//SafeDelete(iRomFile);
-	}
-	SafeFree(rom->Image);
-	SafeFree(rom);
-	SafeFree(iRomPageMap);
+void iRomDestruct() {
+    if (iRomFileStream.is_open())
+        iRomFileStream.close();
+    delete[] rom->Image;
+    delete rom;
+    delete[] iRomPageMap;
+    rom = nullptr;
+    iRomPageMap = nullptr;
 }
 
+int iRomReadImage(const char* filename) {
+    iRomFileStream.open(filename, std::ios::binary);
+    if (!iRomFileStream.is_open()) {
+        std::cerr << "Failed to open ROM image: " << filename << std::endl;
+        return -1;
+    }
 
-int iRomReadImage(char *filename)
-{   
-	FILE *in;
-    BYTE    endian_1;
-    BYTE    endian_2;
-    BYTE    endian_3;
-    BYTE    endian_4;
-   
+    iRomFileStream.seekg(0, std::ios::end);
+    std::streamsize fileLength = iRomFileStream.tellg();
+    iRomFileStream.seekg(0, std::ios::beg);
 
-	iRomFile=NULL;
-	in=iRomFile;
-	in=fopen(filename,"rb");
-	if(!in)
-	{
-		//theApp.ErrorMessage("Failed to open rom image file %s",filename);
-		//delete in;
-		return(-1);
-	}
-	fseek(in,0,SEEK_END);
-	rom->Length=ftell(in);
-	rom->Length/=ROM_PAGE_SIZE;
-	rom->Length++;
-	rom->Length*=ROM_PAGE_SIZE;
-	rom->PrgCodeLength=rom->Length-0x1000;
-	rom->Image=(BYTE *)malloc((size_t)rom->Length);
-	if(rom->Image==NULL)
-	{
-		//theApp.ErrorMessage("Malloc error for RomImage - length %d",rom->Length);
-		fclose(in);
-		//in->Close();
-		//delete in;
-		return(-1);
-	}
-	rom->Header=rom->Image;
-	rom->BootCode=rom->Image+0x40;
-	rom->PrgCode=(DWORD *)(rom->Image + 0x1000);
+    // Round up to nearest page
+    rom->Length = static_cast<DWORD>(fileLength);
+    rom->Length = ((rom->Length / ROM_PAGE_SIZE) + 1) * ROM_PAGE_SIZE;
+    rom->PrgCodeLength = rom->Length - 0x1000;
 
+    rom->Image = new BYTE[rom->Length]();
+    if (!rom->Image) {
+        std::cerr << "Failed to allocate memory for ROM image" << std::endl;
+        iRomFileStream.close();
+        return -1;
+    }
 
-/*
-	in->Read(&endian_1,1);
-	in->Read(&endian_2,1);
-	in->Read(&endian_3,1);
-	in->Read(&endian_4,1);
-	if( (endian_1==0x37)&&(endian_2==0x80) )
-	{
-		EndianChangeMode=0;
-	}
-	else if( (endian_2==0x37)&&(endian_1==0x80) )
-	{
-		EndianChangeMode=1;
-	}
-	else if( (endian_3==0x37)&&(endian_4==0x80) )
-	{
-		EndianChangeMode=2;
-	}
-	else
-	{
-		in->Close();
-		delete in;
-		theApp.ErrorMessage("File %s is not a valid N64 file",filename);
-		return(-1);
-	}
-*/
-	EndianChangeMode=2;
+    rom->Header = rom->Image;
+    rom->BootCode = rom->Image + 0x40;
+    rom->PrgCode = reinterpret_cast<DWORD*>(rom->Image + 0x1000);
 
-	fseek(in,0,SEEK_SET);
-	fread(rom->Image,rom->Length,1,in);
-	long length=ftell(in);
-	if(EndianChangeMode!=2)
-		iRomChangeRomEndian(EndianChangeMode,rom->Length);
-//	in->Close();
-//	delete in;
-/*
-	if(length!=rom->Length)
-	{
-		in->Close();
-		delete in;
-		theApp.ErrorMessage("Read Error for rom image: Read %d and wanted %d",length,rom->Length);
-        return(-1);
-	}
+    iRomFileStream.read(reinterpret_cast<char*>(rom->Image), fileLength);
+    if (!iRomFileStream) {
+        std::cerr << "Error reading ROM image" << std::endl;
+        iRomFileStream.close();
+        return -1;
+    }
 
+    if (EndianChangeMode != 2)
+        iRomChangeRomEndian(EndianChangeMode, rom->Length);
 
-  iRomSetupPageMap();
-
-
-	rom->Info.Validation           = *(WORD *)(rom->Header + (0x00 ^ 0x02));
-    rom->Info.Compression          = *(BYTE *) (rom->Header + (0x02 ^ 0x03));
-    rom->Info.Unknown1             = *(BYTE *) (rom->Header + (0x03 ^ 0x03));
-    rom->Info.Clockrate            = *(DWORD *) (rom->Header + 0x04);
-    rom->Info.ProgramCounter       = *(DWORD *) (rom->Header + 0x08);
-    rom->Info.Release              = *(DWORD *) (rom->Header + 0x0c);
-    rom->Info.Crc1                 = *(DWORD *) (rom->Header + 0x10);
-    rom->Info.Crc2                 = *(DWORD *) (rom->Header + 0x14);
-    rom->Info.Unknown2             = *(DWORD *)(rom->Header + 0x18);
-    rom->Info.Unknown2a             = *(DWORD *)(rom->Header + 0x1c);
-    for(int i=0; i<20; i++)
-        rom->Info.Name[i^0x03] = rom->Header[i+0x20];
-	if(strncmp((char *)rom->Info.Name,"Wave Race 64 SE   ",18)==0)
-	{
-		theApp.m_EmuObj->m_IsWaveraceSE=true;
-	}
-    rom->Info.Unknown3             = *(BYTE *) (rom->Header + (0x34 ^ 0x03));
-    rom->Info.Unknown4             = *(BYTE *) (rom->Header + (0x35 ^ 0x03));
-    rom->Info.Unknown5             = *(BYTE *) (rom->Header + (0x36 ^ 0x03));
-    rom->Info.Unknown6             = *(BYTE *) (rom->Header + (0x37 ^ 0x03));
-    rom->Info.Unknown7             = *(BYTE *) (rom->Header + (0x38 ^ 0x03));
-    rom->Info.Unknown8             = *(BYTE *) (rom->Header + (0x39 ^ 0x03));
-    rom->Info.Unknown9             = *(BYTE *) (rom->Header + (0x3a ^ 0x03));
-    rom->Info.ManufacturerId       = *(BYTE *) (rom->Header + (0x3b ^ 0x03));
-    rom->Info.CartridgeId          = *(WORD *)(rom->Header + (0x3c ^ 0x03));
-    rom->Info.CountryCode          = *(BYTE *) (rom->Header + (0x3e ^ 0x03));
-    rom->Info.Unknown10            = *(BYTE *) (rom->Header + (0x3f ^ 0x03));
-    rom->PrgCodeBaseOrig = rom->Info.ProgramCounter;
-    rom->PrgCodeBase = rom->PrgCodeBaseOrig & 0x1fffffff;
-*/   
-	if(iRomFile)
-	{
-		fclose(iRomFile);
-		//iRomFile->Close();
-		//SafeDelete(iRomFile);
-	}
-
-	return(0);
-} 
-
-
-int iRomReadHeader(char *filename)
-{   
-	FILE *in;
-    BYTE    endian_1;
-    BYTE    endian_2;
-    BYTE    endian_3;
-    BYTE    endian_4;
-   
-	in=fopen(filename,"rb");
-	if(!in)
-	{
-		return(-1);
-	}
-	fseek(in,0,SEEK_END);
-	rom->Length=ftell(in);
-	rom->PrgCodeLength=rom->Length-0x1000;
-	rom->Image=(unsigned char *)malloc(0x40);
-	rom->Header=rom->Image;
-	rom->BootCode=rom->Image+0x40;
-	rom->PrgCode=(DWORD *)(rom->Image + 0x1000);
-
-	WORD EndianChangeMode;
-
-	fread(&endian_1,1,1, in);
-	fread(&endian_2,1,1, in);
-	fread(&endian_3,1,1, in);
-	fread(&endian_4,1,1, in);
-
-	if( (endian_1==0x37)&&(endian_2==0x80) )
-	{
-		EndianChangeMode=0;
-	}
-	else if( (endian_2==0x37)&&(endian_1==0x80) )
-	{
-		EndianChangeMode=1;
-	}
-	else if( (endian_3==0x37)&&(endian_4==0x80) )
-	{
-		EndianChangeMode=2;
-	}
-	else
-	{
-		fclose(in);
-		//in->Close();
-		//delete in;
-		return(-2);
-	}
-
-	fseek(in,0,SEEK_SET);
-	int length=fread(rom->Image,0x40,1,in);
-
-	if(length!=0x40)
-	{
-		fclose(in);
-		//in->Close();
-		//delete in;
-        return(-1);
-	}
-
-	fclose(in);
-	//in->Close();
-	//delete in;
-   
-
-	if(EndianChangeMode!=2)
-		iRomChangeRomEndian(EndianChangeMode,0x40);
-
-	rom->Info.Validation           = *(WORD *)(rom->Header + (0x00 ^ 0x02));
-    rom->Info.Compression          = *(BYTE *) (rom->Header + (0x02 ^ 0x03));
-    rom->Info.Unknown1             = *(BYTE *) (rom->Header + (0x03 ^ 0x03));
-    rom->Info.Clockrate            = *(DWORD *) (rom->Header + 0x04);
-    rom->Info.ProgramCounter       = *(DWORD *) (rom->Header + 0x08);
-    rom->Info.Release              = *(DWORD *) (rom->Header + 0x0c);
-    rom->Info.Crc1                 = *(DWORD *) (rom->Header + 0x10);
-    rom->Info.Crc2                 = *(DWORD *) (rom->Header + 0x14);
-    rom->Info.Unknown2             = *(DWORD *)(rom->Header + 0x18);
-    rom->Info.Unknown2a             = *(DWORD *)(rom->Header + 0x1c);
-    for(int i=0; i<20; i++)
-        rom->Info.Name[i^0x03] = rom->Header[i+0x20];
-    rom->Info.Unknown3             = *(BYTE *) (rom->Header + (0x34 ^ 0x03));
-    rom->Info.Unknown4             = *(BYTE *) (rom->Header + (0x35 ^ 0x03));
-    rom->Info.Unknown5             = *(BYTE *) (rom->Header + (0x36 ^ 0x03));
-    rom->Info.Unknown6             = *(BYTE *) (rom->Header + (0x37 ^ 0x03));
-    rom->Info.Unknown7             = *(BYTE *) (rom->Header + (0x38 ^ 0x03));
-    rom->Info.Unknown8             = *(BYTE *) (rom->Header + (0x39 ^ 0x03));
-    rom->Info.Unknown9             = *(BYTE *) (rom->Header + (0x3a ^ 0x03));
-    rom->Info.ManufacturerId       = *(BYTE *) (rom->Header + (0x3b ^ 0x03));
-    rom->Info.CartridgeId          = *(WORD *)(rom->Header + (0x3c ^ 0x03));
-    rom->Info.CountryCode          = *(BYTE *) (rom->Header + (0x3e ^ 0x03));
-    rom->Info.Unknown10            = *(BYTE *) (rom->Header + (0x3f ^ 0x03));
-    rom->PrgCodeBaseOrig = rom->Info.ProgramCounter;
-    rom->PrgCodeBase = rom->PrgCodeBaseOrig & 0x1fffffff;
-
-	return(0);
-} 
-
-   
-void iRomChangeRomEndian(WORD Mode,DWORD Length)
-{
-    DWORD     i;
-    char    change_endian[4];
-
-
-
-    for(i=0; i<Length; i+=4)
-    {
-        change_endian[0] = rom->Image[i+0];
-        change_endian[1] = rom->Image[i+1];
-        change_endian[2] = rom->Image[i+2];
-        change_endian[3] = rom->Image[i+3];
-		if(Mode==0)
-		{
-			rom->Image[i+0] = change_endian[2];
-			rom->Image[i+1] = change_endian[3];
-			rom->Image[i+2] = change_endian[0];
-			rom->Image[i+3] = change_endian[1];
-		}
-		else
-		{
-			rom->Image[i+0] = change_endian[3];
-			rom->Image[i+1] = change_endian[2];
-			rom->Image[i+2] = change_endian[1];
-			rom->Image[i+3] = change_endian[0];
-		}
-	}
-} 
-   
-void iRomChangeRomEndianEx(WORD Mode,DWORD Length,DWORD Offset)
-{
-    DWORD     i;
-    char    change_endian[4];
-
-
-
-    for(i=0; i<Length; i+=4)
-    {
-        change_endian[0] = rom->Image[i+0+Offset];
-        change_endian[1] = rom->Image[i+1+Offset];
-        change_endian[2] = rom->Image[i+2+Offset];
-        change_endian[3] = rom->Image[i+3+Offset];
-		if(Mode==0)
-		{
-			rom->Image[i+0+Offset] = change_endian[2];
-			rom->Image[i+1+Offset] = change_endian[3];
-			rom->Image[i+2+Offset] = change_endian[0];
-			rom->Image[i+3+Offset] = change_endian[1];
-		}
-		else
-		{
-			rom->Image[i+0+Offset] = change_endian[3];
-			rom->Image[i+1+Offset] = change_endian[2];
-			rom->Image[i+2+Offset] = change_endian[1];
-			rom->Image[i+3+Offset] = change_endian[0];
-		}
-	}
-} 
-
-void iRomSetupPageMap()
-{
-	iRomNumPages=rom->Length/ROM_PAGE_SIZE;	
-	iRomPageMap=(BYTE *)malloc(iRomNumPages*1);
-	memset(iRomPageMap,0,iRomNumPages);
-	for(DWORD p=0;p<10;p++)
-		iRomReadPage(p);
+    iRomFileStream.close();
+    return 0;
 }
 
-void iRomReadPage(WORD PageNum)
-{
-	return;
+int iRomReadHeader(const char* filename) {
+    std::ifstream in(filename, std::ios::binary);
+    if (!in.is_open()) return -1;
 
-	if(iRomPageMap[PageNum]) return;
-	if(PageNum>iRomNumPages) return;
-	theApp.LogMessage("Reading page %d",PageNum);
+    BYTE header[0x40];
+    in.read(reinterpret_cast<char*>(header), sizeof(header));
+    if (!in) return -1;
 
-	DWORD Offset=PageNum*ROM_PAGE_SIZE;
-	fseek(iRomFile,Offset,SEEK_SET);
-	fread(rom->Image+Offset,ROM_PAGE_SIZE,1,iRomFile);
-	//iRomFile->Seek(Offset,CFile::begin);
-	//iRomFile->Read(rom->Image+Offset,ROM_PAGE_SIZE);
-	iRomPageMap[PageNum]=1;
-	if(EndianChangeMode!=2)
-		iRomChangeRomEndianEx(EndianChangeMode,ROM_PAGE_SIZE,Offset);
+    BYTE b1 = header[0], b2 = header[1], b3 = header[2], b4 = header[3];
+    if ((b1 == 0x37 && b2 == 0x80)) EndianChangeMode = 0;
+    else if ((b2 == 0x37 && b1 == 0x80)) EndianChangeMode = 1;
+    else if ((b3 == 0x37 && b4 == 0x80)) EndianChangeMode = 2;
+    else return -2;
+
+    if (EndianChangeMode != 2)
+        iRomChangeRomEndian(EndianChangeMode, 0x40);
+
+    rom->Image = new BYTE[0x40];
+    memcpy(rom->Image, header, 0x40);
+    rom->Header = rom->Image;
+    rom->BootCode = rom->Image + 0x40;
+    rom->PrgCode = nullptr;
+
+    rom->Info.Validation     = *(WORD*)(rom->Header + (0x00 ^ 0x02));
+    rom->Info.Compression    = *(BYTE*)(rom->Header + (0x02 ^ 0x03));
+    rom->Info.Unknown1       = *(BYTE*)(rom->Header + (0x03 ^ 0x03));
+    rom->Info.Clockrate      = *(DWORD*)(rom->Header + 0x04);
+    rom->Info.ProgramCounter = *(DWORD*)(rom->Header + 0x08);
+    rom->Info.Release        = *(DWORD*)(rom->Header + 0x0c);
+    rom->Info.Crc1           = *(DWORD*)(rom->Header + 0x10);
+    rom->Info.Crc2           = *(DWORD*)(rom->Header + 0x14);
+    rom->Info.Unknown2       = *(DWORD*)(rom->Header + 0x18);
+    rom->Info.Unknown2a      = *(DWORD*)(rom->Header + 0x1c);
+    for (int i = 0; i < 20; i++)
+        rom->Info.Name[i ^ 0x03] = rom->Header[i + 0x20];
+
+    rom->Info.Unknown3       = *(BYTE*)(rom->Header + (0x34 ^ 0x03));
+    rom->Info.Unknown4       = *(BYTE*)(rom->Header + (0x35 ^ 0x03));
+    rom->Info.Unknown5       = *(BYTE*)(rom->Header + (0x36 ^ 0x03));
+    rom->Info.Unknown6       = *(BYTE*)(rom->Header + (0x37 ^ 0x03));
+    rom->Info.Unknown7       = *(BYTE*)(rom->Header + (0x38 ^ 0x03));
+    rom->Info.Unknown8       = *(BYTE*)(rom->Header + (0x39 ^ 0x03));
+    rom->Info.Unknown9       = *(BYTE*)(rom->Header + (0x3a ^ 0x03));
+    rom->Info.ManufacturerId = *(BYTE*)(rom->Header + (0x3b ^ 0x03));
+    rom->Info.CartridgeId    = *(WORD*)(rom->Header + (0x3c ^ 0x03));
+    rom->Info.CountryCode    = *(BYTE*)(rom->Header + (0x3e ^ 0x03));
+    rom->Info.Unknown10      = *(BYTE*)(rom->Header + (0x3f ^ 0x03));
+    rom->PrgCodeBaseOrig     = rom->Info.ProgramCounter;
+    rom->PrgCodeBase         = rom->PrgCodeBaseOrig & 0x1fffffff;
+
+    return 0;
 }
 
-void iRomMapCheck(DWORD Offset,DWORD Length)
-{
-	return;
+void iRomChangeRomEndian(WORD Mode, DWORD Length) {
+    for (DWORD i = 0; i < Length; i += 4) {
+        char* p = reinterpret_cast<char*>(rom->Image + i);
+        if (Mode == 0) std::swap_ranges(p, p + 4, p); // Swap for mode 0
+        else std::swap(p[0], p[3]), std::swap(p[1], p[2]); // Swap for mode 1
+    }
+}
 
-	DWORD PageNum=Offset/ROM_PAGE_SIZE;
-	DWORD NumPages=(Length/ROM_PAGE_SIZE)+2;
-	for(DWORD page=PageNum;page<PageNum+NumPages;page++)
-		iRomReadPage(page);
+void iRomChangeRomEndianEx(WORD Mode, DWORD Length, DWORD Offset) {
+    for (DWORD i = 0; i < Length; i += 4) {
+        char* p = reinterpret_cast<char*>(rom->Image + i + Offset);
+        if (Mode == 0) std::swap_ranges(p, p + 4, p);
+        else std::swap(p[0], p[3]), std::swap(p[1], p[2]);
+    }
+}
+
+void iRomSetupPageMap() {
+    iRomNumPages = rom->Length / ROM_PAGE_SIZE;
+    iRomPageMap = new BYTE[iRomNumPages]();
+    for (DWORD p = 0; p < 10; p++)
+        iRomReadPage(p);
+}
+
+void iRomReadPage(WORD PageNum) {
+    // Page caching disabled in modern libnx port
+    return;
+}
+
+void iRomMapCheck(DWORD Offset, DWORD Length) {
+    // Page caching disabled in modern libnx port
+    return;
 }

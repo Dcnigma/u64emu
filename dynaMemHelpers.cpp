@@ -1,441 +1,279 @@
+#include <cstdint>
+#include <cmath>        // for math.h
+#include <cstring>      // for memcpy, if needed
 
-#include "stdafx.h"
-#include "math.h"
 #include "ki.h"
-
 #include "iMain.h"
-
-#include "iCPU.h"			// Core 4300 emulation routines
+#include "iCPU.h"            // Core 4300 emulation routines
 #include "dynaCompiler.h"
-#include "iMemory.h"		// Memory emulation routines
-#include "iRom.h"			// Rom (cart) emulation routines
-#include "iATA.h"			// KI ATA-2 hard disk emulation
+#include "iMemory.h"         // Memory emulation routines
+#include "iRom.h"            // Rom (cart) emulation routines
+#include "iATA.h"            // KI ATA-2 hard disk emulation
 
+//---------------- Type definitions ----------------
+using BYTE  = uint8_t;
+using WORD  = uint16_t;
+using DWORD = uint32_t;
+using QWORD = uint64_t;
+using sBYTE = int8_t;
+using sWORD = int16_t;
+using sDWORD = int32_t;
+using sQWORD = int64_t;
+
+//---------------- External variables ----------------
 extern DWORD cheat;
+extern struct CPUState* r;     // Make sure this points to your CPU state
+extern DWORD iMemToDo;
+extern void iATAUpdate();
+extern void* iMemPhysReadAddr(DWORD address);
+extern void* iMemPhysWriteAddr(DWORD address);
+extern DWORD iMemReadDWord(DWORD address);
+extern QWORD iMemReadQWord(DWORD address);
+extern void iMemWriteDWord(DWORD value, DWORD address);
+extern void iMemWriteQWord(QWORD value, DWORD address);
 
-void helperLb(DWORD address,DWORD op0)
+#define LLADDR 0
+
+//--------------------------------------------------------
+// Standard Load/Store Helpers
+//--------------------------------------------------------
+inline void helperLb(DWORD address, DWORD op0)
 {
-	if(op0==0)
-		iMemPhysReadAddr(address);
-	else
-		*(sQWORD *)&r->GPR[op0*2]=(sQWORD) (sDWORD ) (short) *(char *)iMemPhysReadAddr(address);
+    if(__builtin_expect(op0==0,0))
+        iMemPhysReadAddr(address);
+    else
+        *(sQWORD *)&r->GPR[op0*2] = (sQWORD)(sDWORD)(short)*(int8_t*)iMemPhysReadAddr(address);
 }
 
-void helperLbU(DWORD address,DWORD op0)
+inline void helperLbU(DWORD address, DWORD op0)
 {
-	if(op0==0)
-		iMemPhysReadAddr(address);
-	else
-		*(sQWORD *)&r->GPR[op0*2]=(QWORD) (DWORD ) (WORD) *(BYTE *)iMemPhysReadAddr(address);
+    if(__builtin_expect(op0==0,0))
+        iMemPhysReadAddr(address);
+    else
+        *(sQWORD *)&r->GPR[op0*2] = (QWORD)(DWORD)*(uint8_t*)iMemPhysReadAddr(address);
 }
 
-void helperLh(DWORD address,DWORD op0)
+inline void helperLh(DWORD address, DWORD op0)
 {
-	if(op0==0)
-		iMemPhysReadAddr(address);
-	else
-		*(sQWORD *)&r->GPR[op0*2]=(sQWORD)(sDWORD) *(short *)iMemPhysReadAddr(address);
+    if(__builtin_expect(op0==0,0))
+        iMemPhysReadAddr(address);
+    else
+        *(sQWORD *)&r->GPR[op0*2] = (sQWORD)(sDWORD)*(int16_t*)iMemPhysReadAddr(address);
 }
 
-void helperLhU(DWORD address,DWORD op0)
+inline void helperLhU(DWORD address, DWORD op0)
 {
-	if(op0==0)
-		iMemPhysReadAddr(address);
-	else
-		*(QWORD *)&r->GPR[op0*2]=(QWORD)(DWORD)*(WORD *)iMemPhysReadAddr(address);
+    if(__builtin_expect(op0==0,0))
+        iMemPhysReadAddr(address);
+    else
+        *(QWORD *)&r->GPR[op0*2] = (QWORD)(DWORD)*(uint16_t*)iMemPhysReadAddr(address);
 }
 
-void helperLw(DWORD address,DWORD op0)
+inline void helperLw(DWORD address, DWORD op0)
 {
-	if(op0==0)
-		iMemPhysReadAddr(address);
-	else
-		*(sQWORD *)&r->GPR[op0*2]=(sQWORD) *(sDWORD *)iMemPhysReadAddr(address);
+    if(__builtin_expect(op0==0,0))
+        iMemPhysReadAddr(address);
+    else
+        *(sQWORD *)&r->GPR[op0*2] = (sQWORD)*(sDWORD*)iMemPhysReadAddr(address);
 }
 
-void helperLwU(DWORD address,DWORD op0)
+inline void helperLwU(DWORD address, DWORD op0)
 {
-	if(op0==0)
-		iMemPhysReadAddr(address);
-	else
-		*(sQWORD *)&r->GPR[op0*2]=(QWORD) *(DWORD *)iMemPhysReadAddr(address);
+    if(__builtin_expect(op0==0,0))
+        iMemPhysReadAddr(address);
+    else
+        *(sQWORD *)&r->GPR[op0*2] = (QWORD)*(DWORD*)iMemPhysReadAddr(address);
 }
 
-void helperLd(DWORD address,DWORD op0)
+inline void helperLd(DWORD address, DWORD op0)
 {
-	if(op0==0)
-		iMemPhysReadAddr(address);
-	else
-		*(sQWORD *)&r->GPR[op0*2]=*(sQWORD *)iMemPhysReadAddr(address);
+    if(__builtin_expect(op0==0,0))
+        iMemPhysReadAddr(address);
+    else
+        *(sQWORD *)&r->GPR[op0*2] = *(sQWORD*)iMemPhysReadAddr(address);
 }
 
-void helperSb(DWORD address,DWORD op0)
+inline void helperSb(DWORD address, DWORD op0)
 {
-//	cheat=*(BYTE *)&r->GPR[op0*2];
-	*(BYTE *)iMemPhysWriteAddr(address)=*(BYTE *)&r->GPR[op0*2];
-	if(iMemToDo & 0x8000)
-		iATAUpdate();
+    *(uint8_t*)iMemPhysWriteAddr(address) = *(uint8_t*)&r->GPR[op0*2];
+    if(iMemToDo & 0x8000) iATAUpdate();
 }
 
-void helperSh(DWORD address,DWORD op0)
+inline void helperSh(DWORD address, DWORD op0)
 {
-	*(WORD *)iMemPhysWriteAddr(address)=*(WORD *)&r->GPR[op0*2];
-	if(iMemToDo & 0x8000)
-		iATAUpdate();
+    *(uint16_t*)iMemPhysWriteAddr(address) = *(uint16_t*)&r->GPR[op0*2];
+    if(iMemToDo & 0x8000) iATAUpdate();
 }
 
-void helperSw(DWORD address,DWORD op0)
+inline void helperSw(DWORD address, DWORD op0)
 {
-	*(DWORD *)iMemPhysWriteAddr(address)=*(DWORD *)&r->GPR[op0*2];
-	if(iMemToDo & 0x8000)
-		iATAUpdate();
+    *(DWORD*)iMemPhysWriteAddr(address) = *(DWORD*)&r->GPR[op0*2];
+    if(iMemToDo & 0x8000) iATAUpdate();
 }
 
-void helperSd(DWORD address,DWORD op0)
+inline void helperSd(DWORD address, DWORD op0)
 {
-	*(QWORD *)iMemPhysWriteAddr(address)=*(QWORD *)&r->GPR[op0*2];
-	if(iMemToDo & 0x8000)
-		iATAUpdate();
+    *(QWORD*)iMemPhysWriteAddr(address) = *(QWORD*)&r->GPR[op0*2];
+    if(iMemToDo & 0x8000) iATAUpdate();
 }
 
-void helperLwr(DWORD address,DWORD op0)
+//--------------------------------------------------------
+// Unaligned Load/Store Helpers
+//--------------------------------------------------------
+inline void helperLwl(DWORD address,DWORD op0)
 {
-	DWORD    offset;
-	DWORD   data;
-	
-	offset = (DWORD)address;
-	
-	data=iMemReadDWord(offset & 0xfffffffc);
-
-	switch(3-(offset % 4))
-	{
-	case 0:
-		*(sQWORD *)&r->GPR[op0*2]  = (*(sQWORD *)&r->GPR[op0*2] & 0xffffff00) | (data >> 24);
-		break;
-		
-	case 1:
-		*(sQWORD *)&r->GPR[op0*2]  = (*(sQWORD *)&r->GPR[op0*2] & 0xffff0000) | (data >> 16);
-		break;
-		
-	case 2:
-		*(sQWORD *)&r->GPR[op0*2]  = (*(sQWORD *)&r->GPR[op0*2] & 0xff000000) | (data >> 8);
-		break;
-		
-	case 3:
-		*(sQWORD *)&r->GPR[op0*2]  = (sQWORD)(sDWORD)data;
-		break;
-	}
+    DWORD offset = address;
+    DWORD data = iMemReadDWord(offset & ~3);
+    switch(3-(offset % 4))
+    {
+        case 0: *(sQWORD *)&r->GPR[op0*2] = (sQWORD)(sDWORD)data; break;
+        case 1: *(sQWORD *)&r->GPR[op0*2] = (sQWORD)(sDWORD)((r->GPR[op0*2]&0xFF)| (data<<8)); break;
+        case 2: *(sQWORD *)&r->GPR[op0*2] = (sQWORD)(sDWORD)((r->GPR[op0*2]&0xFFFF)| (data<<16)); break;
+        case 3: *(sQWORD *)&r->GPR[op0*2] = (sQWORD)(sDWORD)((r->GPR[op0*2]&0xFFFFFF)| (data<<24)); break;
+    }
 }
 
-void helperLwl(DWORD address,DWORD op0)
+inline void helperLwr(DWORD address,DWORD op0)
 {
-	DWORD    offset;
-	DWORD   data;
-	
-	offset = (DWORD)address;
-	
-	data=iMemReadDWord(offset & 0xfffffffc);
-
-	switch(3-(offset % 4))
-	{
-	case 0:
-		*(sQWORD *)&r->GPR[op0*2] = (sQWORD)(sDWORD)data;
-		break;
-		
-	case 1:
-		*(sQWORD *)&r->GPR[op0*2]  = (sQWORD)(sDWORD)((r->GPR[op0*2] & 0x000000ff) | (data << 8));
-		break;
-		
-	case 2:
-		*(sQWORD *)&r->GPR[op0*2]  = (sQWORD)(sDWORD)((r->GPR[op0*2] & 0x0000ffff) | (data << 16));
-		break;
-		
-	case 3:
-		*(sQWORD *)&r->GPR[op0*2]  = (sQWORD)(sDWORD)((r->GPR[op0*2] & 0x00ffffff) | (data << 24));
-		break;
-	}
+    DWORD offset = address;
+    DWORD data = iMemReadDWord(offset & ~3);
+    switch(3-(offset % 4))
+    {
+        case 0: *(sQWORD *)&r->GPR[op0*2] = (*(sQWORD *)&r->GPR[op0*2] & 0xffffff00) | (data>>24); break;
+        case 1: *(sQWORD *)&r->GPR[op0*2] = (*(sQWORD *)&r->GPR[op0*2] & 0xffff0000) | (data>>16); break;
+        case 2: *(sQWORD *)&r->GPR[op0*2] = (*(sQWORD *)&r->GPR[op0*2] & 0xff000000) | (data>>8); break;
+        case 3: *(sQWORD *)&r->GPR[op0*2] = (sQWORD)(sDWORD)data; break;
+    }
 }
 
-void helperLdr(DWORD address,DWORD op0)
+inline void helperLdl(DWORD address,DWORD op0)
 {
-	DWORD    offset;
-	QWORD   data;
-	
-	offset = (DWORD)address;
-	
-	data=iMemReadQWord(offset & 0xfffffff8);
-
-	switch(7-(offset % 8))
-	{
-	case 7:
-		*(QWORD *)&r->GPR[op0*2] = data;
-		break;
-		
-	case 6:
-		*(QWORD *)&r->GPR[op0*2]  = (*(QWORD *)&r->GPR[op0*2] & 0xff00000000000000) | (data >> 8);
-		break;
-		
-	case 5:
-		*(QWORD *)&r->GPR[op0*2]  = (*(QWORD *)&r->GPR[op0*2] & 0xffff000000000000) | (data >> 16);
-		break;
-		
-	case 4:
-		*(QWORD *)&r->GPR[op0*2]  = (*(QWORD *)&r->GPR[op0*2] & 0xffffff0000000000) | (data >> 24);
-		break;
-		
-	case 3:
-		*(QWORD *)&r->GPR[op0*2]  = (*(QWORD *)&r->GPR[op0*2] & 0xffffffff00000000) | (data >> 32);
-		break;
-		
-	case 2:
-		*(QWORD *)&r->GPR[op0*2]  = (*(QWORD *)&r->GPR[op0*2] & 0xffffffffff000000) | (data >> 40);
-		break;
-		
-	case 1:
-		*(QWORD *)&r->GPR[op0*2]  = (*(QWORD *)&r->GPR[op0*2] & 0xffffffffffff0000) | (data >> 48);
-		break;
-		
-	case 0:
-		*(QWORD *)&r->GPR[op0*2]  = (*(QWORD *)&r->GPR[op0*2] & 0xffffffffffffff00) | (data >> 56);
-		break;
-		
-	}
+    DWORD offset = address;
+    QWORD data = iMemReadQWord(offset & ~7);
+    switch(7-(offset%8))
+    {
+        case 0: *(QWORD*)&r->GPR[op0*2] = data; break;
+        case 1: *(QWORD*)&r->GPR[op0*2] = (*(QWORD*)&r->GPR[op0*2]&0xFF) | (data<<8); break;
+        case 2: *(QWORD*)&r->GPR[op0*2] = (*(QWORD*)&r->GPR[op0*2]&0xFFFF) | (data<<16); break;
+        case 3: *(QWORD*)&r->GPR[op0*2] = (*(QWORD*)&r->GPR[op0*2]&0xFFFFFF) | (data<<24); break;
+        case 4: *(QWORD*)&r->GPR[op0*2] = (*(QWORD*)&r->GPR[op0*2]&0xFFFFFFFF) | (data<<32); break;
+        case 5: *(QWORD*)&r->GPR[op0*2] = (*(QWORD*)&r->GPR[op0*2]&0xFFFFFFFFFF) | (data<<40); break;
+        case 6: *(QWORD*)&r->GPR[op0*2] = (*(QWORD*)&r->GPR[op0*2]&0xFFFFFFFFFFFF) | (data<<48); break;
+        case 7: *(QWORD*)&r->GPR[op0*2] = (*(QWORD*)&r->GPR[op0*2]&0xFFFFFFFFFFFFFF) | (data<<56); break;
+    }
 }
 
-void helperLdl(DWORD address,DWORD op0)
+inline void helperLdr(DWORD address,DWORD op0)
 {
-	DWORD    offset;
-	QWORD   data;
-	
-	offset = (DWORD)address;
-	
-	data=iMemReadQWord(offset & 0xfffffff8);
-
-	switch(7-(offset % 8))
-	{
-	case 0:
-		*(QWORD *)&r->GPR[op0*2] = data;
-		break;
-		
-	case 1:
-		*(QWORD *)&r->GPR[op0*2]  = (*(QWORD *)&r->GPR[op0*2] & 0x00000000000000ff) | (data << 8);
-		break;
-		
-	case 2:
-		*(QWORD *)&r->GPR[op0*2]  = (*(QWORD *)&r->GPR[op0*2] & 0x000000000000ffff) | (data << 16);
-		break;
-		
-	case 3:
-		*(QWORD *)&r->GPR[op0*2]  = (*(QWORD *)&r->GPR[op0*2] & 0x0000000000ffffff) | (data << 24);
-		break;
-		
-	case 4:
-		*(QWORD *)&r->GPR[op0*2]  = (*(QWORD *)&r->GPR[op0*2] & 0x00000000ffffffff) | (data << 32);
-		break;
-		
-	case 5:
-		*(QWORD *)&r->GPR[op0*2]  = (*(QWORD *)&r->GPR[op0*2] & 0x000000ffffffffff) | (data << 40);
-		break;
-		
-	case 6:
-		*(QWORD *)&r->GPR[op0*2]  = (*(QWORD *)&r->GPR[op0*2] & 0x0000ffffffffffff) | (data << 48);
-		break;
-		
-	case 7:
-		*(QWORD *)&r->GPR[op0*2]  = (*(QWORD *)&r->GPR[op0*2] & 0x00ffffffffffffff) | (data << 56);
-		break;
-		
-	} 
+    DWORD offset = address;
+    QWORD data = iMemReadQWord(offset & ~7);
+    switch(7-(offset%8))
+    {
+        case 7: *(QWORD*)&r->GPR[op0*2] = data; break;
+        case 6: *(QWORD*)&r->GPR[op0*2] = (*(QWORD*)&r->GPR[op0*2]&0xff00000000000000) | (data>>8); break;
+        case 5: *(QWORD*)&r->GPR[op0*2] = (*(QWORD*)&r->GPR[op0*2]&0xffff000000000000) | (data>>16); break;
+        case 4: *(QWORD*)&r->GPR[op0*2] = (*(QWORD*)&r->GPR[op0*2]&0xffffff0000000000) | (data>>24); break;
+        case 3: *(QWORD*)&r->GPR[op0*2] = (*(QWORD*)&r->GPR[op0*2]&0xffffffff00000000) | (data>>32); break;
+        case 2: *(QWORD*)&r->GPR[op0*2] = (*(QWORD*)&r->GPR[op0*2]&0xffffffffff000000) | (data>>40); break;
+        case 1: *(QWORD*)&r->GPR[op0*2] = (*(QWORD*)&r->GPR[op0*2]&0xffffffffffff0000) | (data>>48); break;
+        case 0: *(QWORD*)&r->GPR[op0*2] = (*(QWORD*)&r->GPR[op0*2]&0xffffffffffffff00) | (data>>56); break;
+    }
 }
 
-
-void helperSwr(DWORD offset,DWORD op0)
+//--------------------------------------------------------
+// Store helpers (unaligned swaps)
+//--------------------------------------------------------
+inline void helperSwl(DWORD offset,DWORD op0)
 {
-	DWORD  data;
-	DWORD  old_data;
-
-	old_data=iMemReadDWord((DWORD)(offset & 0xfffffffc));
-	
-	switch(3-(offset % 4))
-	{
-	case 0:
-		data = (old_data & 0x00ffffff) | ((DWORD)r->GPR[op0*2] << 24);
-		break;
-		
-	case 1:
-		data = (old_data & 0x0000ffff) | ((DWORD)r->GPR[op0*2] << 16);
-		break;
-		
-	case 2:
-		data = (old_data & 0x000000ff) | ((DWORD)r->GPR[op0*2] << 8);
-		break;
-		
-	case 3:
-		data = (DWORD)r->GPR[op0*2];
-		break;
-		
-	default:
-		data = 0;   /* to make compiler happy */
-	}
-	
-	iMemWriteDWord(data, (DWORD)(offset & 0xfffffffc));
+    DWORD old_data = iMemReadDWord(offset & ~3);
+    DWORD data;
+    switch(3-(offset%4))
+    {
+        case 0: data = (DWORD)r->GPR[op0*2]; break;
+        case 1: data = (old_data & 0xFF000000) | ((DWORD)r->GPR[op0*2]>>8); break;
+        case 2: data = (old_data & 0xFFFF0000) | ((DWORD)r->GPR[op0*2]>>16); break;
+        case 3: data = (old_data & 0xFFFFFF00) | ((DWORD)r->GPR[op0*2]>>24); break;
+        default: data = 0; break;
+    }
+    iMemWriteDWord(data, offset & ~3);
 }
 
-
-void helperSwl(DWORD offset,DWORD op0)
+inline void helperSwr(DWORD offset,DWORD op0)
 {
-	DWORD  data;
-	DWORD  old_data;
-	
-	old_data = iMemReadDWord((DWORD)(offset & 0xfffffffc));
-	
-	switch(3-(offset % 4))
-	{
-	case 0:
-		data = (DWORD)r->GPR[op0*2];
-		break;
-		
-	case 1:
-		data = (old_data & 0xff000000) | ((DWORD)r->GPR[op0*2] >> 8);
-		break;
-		
-	case 2:
-		data = (old_data & 0xffff0000) | ((DWORD)r->GPR[op0*2] >> 16);
-		break;
-		
-	case 3:
-		data = (old_data & 0xffffff00) | ((DWORD)r->GPR[op0*2] >> 24);
-		break;
-		
-	default:
-		data = 0;   /* to make compiler happy */
-	}
-	
-	iMemWriteDWord(data, (DWORD)(offset & 0xfffffffc));
+    DWORD old_data = iMemReadDWord(offset & ~3);
+    DWORD data;
+    switch(3-(offset%4))
+    {
+        case 0: data = (old_data & 0x00ffffff) | ((DWORD)r->GPR[op0*2]<<24); break;
+        case 1: data = (old_data & 0x0000ffff) | ((DWORD)r->GPR[op0*2]<<16); break;
+        case 2: data = (old_data & 0x000000ff) | ((DWORD)r->GPR[op0*2]<<8); break;
+        case 3: data = (DWORD)r->GPR[op0*2]; break;
+        default: data = 0; break;
+    }
+    iMemWriteDWord(data, offset & ~3);
 }
 
-
-void helperSdl(DWORD offset,DWORD op0)
+inline void helperSdl(DWORD offset,DWORD op0)
 {
-
-	QWORD   data;
-
-	data=iMemReadQWord((DWORD)(offset & 0xfffffff8));
-	
-	switch(7-(offset % 8))
-	{
-	case 0:
-		iMemWriteQWord(*(QWORD *)&r->GPR[op0*2], offset & 0xfffffff8);
-		break;
-		
-	case 1:
-		iMemWriteQWord((data & 0xff00000000000000) | (*(QWORD *)&r->GPR[op0*2] >> 8), offset & 0xfffffff8);
-		break;
-		
-	case 2:
-		iMemWriteQWord((data & 0xffff000000000000) | (*(QWORD *)&r->GPR[op0*2] >> 16), offset & 0xfffffff8);
-		break;
-		
-	case 3:
-		iMemWriteQWord((data & 0xffffff0000000000) | (*(QWORD *)&r->GPR[op0*2] >> 24), offset & 0xfffffff8);
-		break;
-		
-	case 4:
-		iMemWriteQWord((data & 0xffffffff00000000) | (*(QWORD *)&r->GPR[op0*2] >> 32), offset & 0xfffffff8);
-		break;
-		
-	case 5:
-		iMemWriteQWord((data & 0xffffffffff000000) | (*(QWORD *)&r->GPR[op0*2] >> 40), offset & 0xfffffff8);
-		break;
-		
-	case 6:
-		iMemWriteQWord((data & 0xffffffffffff0000) | (*(QWORD *)&r->GPR[op0*2] >> 48), offset & 0xfffffff8);
-		break;
-		
-	case 7:
-		iMemWriteQWord((data & 0xffffffffffffff00) | (*(QWORD *)&r->GPR[op0*2] >> 56), offset & 0xfffffff8);
-		break;
-		
-	} /* switch(offset % 8) */
+    QWORD data = iMemReadQWord(offset & ~7);
+    switch(7-(offset%8))
+    {
+        case 0: iMemWriteQWord(*(QWORD*)&r->GPR[op0*2], offset & ~7); break;
+        case 1: iMemWriteQWord((data&0xFF00000000000000)|(*(QWORD*)&r->GPR[op0*2]>>8), offset & ~7); break;
+        case 2: iMemWriteQWord((data&0xFFFF000000000000)|(*(QWORD*)&r->GPR[op0*2]>>16), offset & ~7); break;
+        case 3: iMemWriteQWord((data&0xFFFFFF0000000000)|(*(QWORD*)&r->GPR[op0*2]>>24), offset & ~7); break;
+        case 4: iMemWriteQWord((data&0xFFFFFFFF00000000)|(*(QWORD*)&r->GPR[op0*2]>>32), offset & ~7); break;
+        case 5: iMemWriteQWord((data&0xFFFFFFFFFF000000)|(*(QWORD*)&r->GPR[op0*2]>>40), offset & ~7); break;
+        case 6: iMemWriteQWord((data&0xFFFFFFFFFFFF0000)|(*(QWORD*)&r->GPR[op0*2]>>48), offset & ~7); break;
+        case 7: iMemWriteQWord((data&0xFFFFFFFFFFFFFF00)|(*(QWORD*)&r->GPR[op0*2]>>56), offset & ~7); break;
+    }
 }
 
-void helperSdr(DWORD offset,DWORD op0)
+inline void helperSdr(DWORD offset,DWORD op0)
 {
-	QWORD   data;
-
-	data=iMemReadQWord((DWORD)(offset & 0xfffffff8));
-	
-	switch(7-(offset % 8))
-	{
-	case 7:
-		iMemWriteQWord(*(QWORD *)&r->GPR[op0*2], offset & 0xfffffff8);
-		break;
-		
-	case 6:
-		iMemWriteQWord((data & 0x00000000000000ff) | (*(QWORD *)&r->GPR[op0*2] << 8), offset & 0xfffffff8);
-		break;
-		
-	case 5:
-		iMemWriteQWord((data & 0x000000000000ffff) | (*(QWORD *)&r->GPR[op0*2] << 16), offset & 0xfffffff8);
-		break;
-		
-	case 4:
-		iMemWriteQWord((data & 0x0000000000ffffff) | (*(QWORD *)&r->GPR[op0*2] << 24), offset & 0xfffffff8);
-		break;
-		
-	case 3:
-		iMemWriteQWord((data & 0x00000000ffffffff) | (*(QWORD *)&r->GPR[op0*2] << 32), offset & 0xfffffff8);
-		break;
-		
-	case 2:
-		iMemWriteQWord((data & 0x000000ffffffffff) | (*(QWORD *)&r->GPR[op0*2] << 40), offset & 0xfffffff8);
-		break;
-		
-	case 1:
-		iMemWriteQWord((data & 0x0000ffffffffffff) | (*(QWORD *)&r->GPR[op0*2] << 48), offset & 0xfffffff8);
-		break;
-		
-	case 0:
-		iMemWriteQWord((data & 0x00ffffffffffffff) | (*(QWORD *)&r->GPR[op0*2] << 56), offset & 0xfffffff8);
-		break;
-		
-	} /* switch(offset % 8) */
+    QWORD data = iMemReadQWord(offset & ~7);
+    switch(7-(offset%8))
+    {
+        case 7: iMemWriteQWord(*(QWORD*)&r->GPR[op0*2], offset & ~7); break;
+        case 6: iMemWriteQWord((data&0xFF)|(*(QWORD*)&r->GPR[op0*2]<<8), offset & ~7); break;
+        case 5: iMemWriteQWord((data&0xFFFF)|(*(QWORD*)&r->GPR[op0*2]<<16), offset & ~7); break;
+        case 4: iMemWriteQWord((data&0xFFFFFF)|(*(QWORD*)&r->GPR[op0*2]<<24), offset & ~7); break;
+        case 3: iMemWriteQWord((data&0xFFFFFFFF)|(*(QWORD*)&r->GPR[op0*2]<<32), offset & ~7); break;
+        case 2: iMemWriteQWord((data&0xFFFFFFFFFF)|(*(QWORD*)&r->GPR[op0*2]<<40), offset & ~7); break;
+        case 1: iMemWriteQWord((data&0xFFFFFFFFFFFF)|(*(QWORD*)&r->GPR[op0*2]<<48), offset & ~7); break;
+        case 0: iMemWriteQWord((data&0xFFFFFFFFFFFFFF)|(*(QWORD*)&r->GPR[op0*2]<<56), offset & ~7); break;
+    }
 }
 
-void helperSc(DWORD offset,DWORD op0)
+//--------------------------------------------------------
+// LL/SC helpers
+//--------------------------------------------------------
+inline void helperLl(DWORD offset,DWORD op0)
 {
-	r->Llbit=1;
-	if(r->Llbit)
-	{
-		iMemWriteDWord((DWORD)r->GPR[op0*2],offset);
-        
-	} /* if(r->Llbit) */
-	
-	*(sQWORD *)&r->GPR[op0*2] = (sQWORD)(sBYTE)r->Llbit;
+    *(sQWORD*)&r->GPR[op0*2] = (sQWORD)*(sDWORD*)iMemPhysReadAddr(offset);
+    *(sQWORD*)&r->CPR0[2*LLADDR] = (sQWORD)(sDWORD)offset;
+    r->Llbit = 1;
 }
 
-void helperScd(DWORD offset,DWORD op0)
+inline void helperLld(DWORD offset,DWORD op0)
 {
-	r->Llbit=1;
-	if(r->Llbit)
-	{
-		iMemWriteQWord(*(QWORD *)&r->GPR[op0*2],offset);
-        
-	} /* if(r->Llbit) */
-	
-	*(sQWORD *)&r->GPR[op0*2] = (sQWORD)(sBYTE)r->Llbit;
+    *(sQWORD*)&r->GPR[op0*2] = *(sQWORD*)iMemPhysReadAddr(offset);
+    *(sQWORD*)&r->CPR0[2*LLADDR] = (sQWORD)(sDWORD)offset;
+    r->Llbit = 1;
 }
 
-void helperLl(DWORD offset,DWORD op0)
+inline void helperSc(DWORD offset,DWORD op0)
 {
-	*(sQWORD *)&r->GPR[op0*2]=(sQWORD) *(sDWORD *)iMemPhysReadAddr(offset);
-	*(sQWORD *)&r->CPR0[2*LLADDR] = (sQWORD)(sDWORD)offset;
-	r->Llbit = 1;
+    r->Llbit=1;
+    if(__builtin_expect(r->Llbit,1))
+        iMemWriteDWord((DWORD)r->GPR[op0*2],offset);
+    *(sQWORD*)&r->GPR[op0*2] = (sQWORD)(sBYTE)r->Llbit;
 }
 
-void helperLld(DWORD offset,DWORD op0)
+inline void helperScd(DWORD offset,DWORD op0)
 {
-	*(sQWORD *)&r->GPR[op0*2]=* (sQWORD*)iMemPhysReadAddr(offset);
-	*(sQWORD *)&r->CPR0[2*LLADDR] = (sQWORD)(sDWORD)offset;
-	r->Llbit = 1;
+    r->Llbit=1;
+    if(__builtin_expect(r->Llbit,1))
+        iMemWriteQWord(*(QWORD*)&r->GPR[op0*2],offset);
+    *(sQWORD*)&r->GPR[op0*2] = (sQWORD)(sBYTE)r->Llbit;
 }

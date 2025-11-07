@@ -45,6 +45,8 @@ extern WORD dynaOpAddIEqual(BYTE *cp,BYTE op0,DWORD Immediate);
 extern WORD dynaOpLoadI(BYTE *cp,BYTE op0,DWORD Immediate);
 extern WORD dynaOpDAddIEqual(BYTE *cp,BYTE rt,DWORD Immediate);
 extern WORD dynaOpDAddI(BYTE *cp,BYTE rt,BYTE rs,DWORD Immediate);
+
+// 64-bit shifts
 extern WORD dynaOpDSllV(BYTE *cp,BYTE op0,BYTE op1,BYTE op2);
 extern WORD dynaOpDSll(BYTE *cp,BYTE op0,BYTE op1,DWORD Immediate);
 extern WORD dynaOpDSll32(BYTE *cp,BYTE op0,BYTE op1,DWORD Immediate);
@@ -54,6 +56,8 @@ extern WORD dynaOpDSrl32(BYTE *cp,BYTE op0,BYTE op1,DWORD Immediate);
 extern WORD dynaOpDSraV(BYTE *cp,BYTE op0,BYTE op1,BYTE op2);
 extern WORD dynaOpDSra(BYTE *cp,BYTE op0,BYTE op1,DWORD Immediate);
 extern WORD dynaOpDSra32(BYTE *cp,BYTE op0,BYTE op1,DWORD Immediate);
+
+// Rs/Mf/Mt/Ct/Cf operations
 extern WORD dynaOpRs0Mf(BYTE *cp,BYTE op0,BYTE op1);
 extern WORD dynaOpRs0DMf(BYTE *cp,BYTE op0,BYTE op1);
 extern WORD dynaOpRs0Mt(BYTE *cp,BYTE op0,BYTE op1);
@@ -66,6 +70,8 @@ extern WORD dynaOpRs1Ct(BYTE *cp,BYTE op0,BYTE op1);
 extern WORD dynaOpRs0Ct(BYTE *cp,BYTE op0,BYTE op1);
 extern WORD dynaOpRs1Cf(BYTE *cp,BYTE op0,BYTE op1);
 extern WORD dynaOpRs0Cf(BYTE *cp,BYTE op0,BYTE op1);
+
+// Logic operations
 extern WORD dynaOpAndEqual(BYTE *cp,BYTE op0,BYTE op1);
 extern WORD dynaOpAnd(BYTE *cp,BYTE op0,BYTE op1,BYTE op2);
 extern WORD dynaOpOrEqual(BYTE *cp,BYTE op0,BYTE op1);
@@ -74,11 +80,32 @@ extern WORD dynaOpNorEqual(BYTE *cp,BYTE op0,BYTE op1);
 extern WORD dynaOpNor(BYTE *cp,BYTE op0,BYTE op1,BYTE op2);
 extern WORD dynaOpXorEqual(BYTE *cp,BYTE op0,BYTE op1);
 extern WORD dynaOpXor(BYTE *cp,BYTE op0,BYTE op1,BYTE op2);
+
+// Immediate logic
 extern WORD dynaOpAndI(BYTE *cp,BYTE op0,BYTE op1,DWORD Immediate);
 extern WORD dynaOpOrIEqual(BYTE *cp,BYTE op0,DWORD Immediate);
 extern WORD dynaOpOrI(BYTE *cp,BYTE op0,BYTE op1,DWORD Immediate);
 extern WORD dynaOpXorIEqual(BYTE *cp,BYTE op0,DWORD Immediate);
 extern WORD dynaOpXorI(BYTE *cp,BYTE op0,BYTE op1,DWORD Immediate);
 extern WORD dynaOpAndIEqual(BYTE *cp,BYTE op0,DWORD Immediate);
+
+// Branches and memory
+extern WORD dynaOpBeq(BYTE *cp, BYTE op0, BYTE op1, sDWORD offset);
+extern WORD dynaOpBne(BYTE *cp, BYTE op0, BYTE op1, sDWORD offset);
+extern WORD dynaOpBltz(BYTE *cp, BYTE op0, sDWORD offset);
+extern WORD dynaOpBgez(BYTE *cp, BYTE op0, sDWORD offset);
+extern WORD dynaOpBltzU(BYTE *cp, BYTE op0, sDWORD offset);
+extern WORD dynaOpBgezU(BYTE *cp, BYTE op0, sDWORD offset);
+extern WORD dynaOpLui(BYTE *cp, BYTE op0, DWORD imm);
+extern WORD dynaOpAddiu(BYTE *cp, BYTE op0, BYTE op1, sDWORD imm);
+extern WORD dynaOpLw(BYTE *cp, BYTE op0, BYTE op1, sDWORD offset);
+extern WORD dynaOpSw(BYTE *cp, BYTE op0, BYTE op1, sDWORD offset);
+extern WORD dynaOpLb(BYTE *cp, BYTE op0, BYTE op1, sDWORD offset);
+extern WORD dynaOpSb(BYTE *cp, BYTE op0, BYTE op1, sDWORD offset);
+extern WORD dynaOpLh(BYTE *cp, BYTE op0, BYTE op1, sDWORD offset);
+extern WORD dynaOpSh(BYTE *cp, BYTE op0, BYTE op1, sDWORD offset);
+
+// Misc
+extern WORD dynaOpNop(BYTE *cp);
 
 #endif

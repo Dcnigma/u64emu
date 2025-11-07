@@ -1,24 +1,30 @@
+#pragma once
 
-extern void helperLb(DWORD address,DWORD op0);
-extern void helperLbU(DWORD address,DWORD op0);
-extern void helperLh(DWORD address,DWORD op0);
-extern void helperLhU(DWORD address,DWORD op0);
-extern void helperLw(DWORD address,DWORD op0);
-extern void helperLwU(DWORD address,DWORD op0);
-extern void helperLd(DWORD address,DWORD op0);
-extern void helperSb(DWORD address,DWORD op0);
-extern void helperSh(DWORD address,DWORD op0);
-extern void helperSw(DWORD address,DWORD op0);
-extern void helperSd(DWORD address,DWORD op0);
-extern void helperLwl(DWORD address,DWORD op0);
-extern void helperLwr(DWORD address,DWORD op0);
-extern void helperLdl(DWORD address,DWORD op0);
-extern void helperLdr(DWORD address,DWORD op0);
-extern void helperSwl(DWORD address,DWORD op0);
-extern void helperSwr(DWORD address,DWORD op0);
-extern void helperSdl(DWORD address,DWORD op0);
-extern void helperSdr(DWORD address,DWORD op0);
-extern void helperSc(DWORD address,DWORD op0);
-extern void helperScd(DWORD address,DWORD op0);
-extern void helperLl(DWORD address,DWORD op0);
-extern void helperLld(DWORD address,DWORD op0);
+// Standard load/store
+inline void helperLb(DWORD address, DWORD op0);
+inline void helperLbU(DWORD address, DWORD op0);
+inline void helperLh(DWORD address, DWORD op0);
+inline void helperLhU(DWORD address, DWORD op0);
+inline void helperLw(DWORD address, DWORD op0);
+inline void helperLwU(DWORD address, DWORD op0);
+inline void helperLd(DWORD address, DWORD op0);
+inline void helperSb(DWORD address, DWORD op0);
+inline void helperSh(DWORD address, DWORD op0);
+inline void helperSw(DWORD address, DWORD op0);
+inline void helperSd(DWORD address, DWORD op0);
+
+// Unaligned load/store
+inline void helperLwl(DWORD address, DWORD op0);
+inline void helperLwr(DWORD address, DWORD op0);
+inline void helperLdl(DWORD address, DWORD op0);
+inline void helperLdr(DWORD address, DWORD op0);
+inline void helperSwl(DWORD address, DWORD op0);
+inline void helperSwr(DWORD address, DWORD op0);
+inline void helperSdl(DWORD address, DWORD op0);
+inline void helperSdr(DWORD address, DWORD op0);
+
+// LL/SC helpers
+inline void helperSc(DWORD address, DWORD op0);
+inline void helperScd(DWORD address, DWORD op0);
+inline void helperLl(DWORD address, DWORD op0);
+inline void helperLld(DWORD address, DWORD op0);

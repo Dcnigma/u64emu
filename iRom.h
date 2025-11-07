@@ -1,14 +1,32 @@
-#ifndef iRom_h
-#define iRom_h
+#ifndef IROM_H
+#define IROM_H
 
-extern void iRomConstruct();
-extern void iRomDestruct();
-extern int iRomReadImage(char *filename);
-extern int iRomReadHeader(char *filename);
-extern void iRomChangeRomEndian(WORD Mode,DWORD Length);
-extern void iRomMapCheck(DWORD Offset,DWORD Length);
-extern void iRomReadPage(WORD PageNum);
-extern void iRomSetupPageMap();
-extern void iRomChangeRomEndianEx(WORD Mode,DWORD Length,DWORD Offset);
+#include <cstdint>
 
-#endif
+// Standard integer types for clarity
+using BYTE  = uint8_t;
+using WORD  = uint16_t;
+using DWORD = uint32_t;
+using QWORD = uint64_t;
+
+// Forward declaration of N64 ROM structure
+struct N64RomStruct;
+
+// ROM management
+extern N64RomStruct* rom;
+
+// ROM functions
+void iRomConstruct();
+void iRomDestruct();
+
+int iRomReadImage(const char* filename);
+int iRomReadHeader(const char* filename);
+
+void iRomChangeRomEndian(WORD mode, DWORD length);
+void iRomChangeRomEndianEx(WORD mode, DWORD length, DWORD offset);
+
+void iRomSetupPageMap();
+void iRomReadPage(WORD pageNum);
+void iRomMapCheck(DWORD offset, DWORD length);
+
+#endif // IROM_H

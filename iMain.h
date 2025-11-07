@@ -1,11 +1,12 @@
 #ifndef IMAIN_H
 #define IMAIN_H
 
+#include <cstdint>
 
 #define NO_DELAY        0
 #define DO_DELAY        1
 #define EXEC_DELAY      2
-#define RELOAD_PC		3
+#define RELOAD_PC       3
 
 #define LINK_OFFSET 4
 
@@ -38,178 +39,149 @@
 #define MI_INTR_PI  0x10
 #define MI_INTR_DP  0x20
 
-typedef struct tr_rominfo
-{       
-        char  *real_name;
-        char  *dmem_name;
-        char  *imem_name;
-        
-        WORD Validation;       /* 0x00 */
-        BYTE  Compression;      /* 0x02 */
-        BYTE  Unknown1;         /* 0x03 */
-        DWORD  Clockrate;        /* 0x04 */
-        DWORD  ProgramCounter;   /* 0x08 */
-        DWORD  Release;          /* 0x0c */
-        
-        DWORD  Crc1;             /* 0x10 */
-        DWORD  Crc2;             /* 0x14 */
-        DWORD Unknown2;         /* 0x18 */
-        DWORD Unknown2a;         /* 0x18 */
-        
-        BYTE  Name[20];         /* 0x20 - 0x33 */
-        
-        BYTE  Unknown3;         /* 0x34 */
-        BYTE  Unknown4;         /* 0x35 */
-        BYTE  Unknown5;         /* 0x36 */
-        BYTE  Unknown6;         /* 0x37 */
-        BYTE  Unknown7;         /* 0x38 */
-        BYTE  Unknown8;         /* 0x39 */
-        BYTE  Unknown9;         /* 0x3a */
-        BYTE  ManufacturerId;   /* 0x3b */
-        WORD CartridgeId;      /* 0x3c */
-        BYTE  CountryCode;      /* 0x3e */
-        BYTE  Unknown10;        /* 0x3f */
+typedef struct N64RomInfoStruct {
+    char  *real_name;
+    char  *dmem_name;
+    char  *imem_name;
+
+    uint16_t Validation;       /* 0x00 */
+    uint8_t  Compression;      /* 0x02 */
+    uint8_t  Unknown1;         /* 0x03 */
+    uint32_t Clockrate;        /* 0x04 */
+    uint32_t ProgramCounter;   /* 0x08 */
+    uint32_t Release;          /* 0x0c */
+
+    uint32_t Crc1;             /* 0x10 */
+    uint32_t Crc2;             /* 0x14 */
+    uint32_t Unknown2;          /* 0x18 */
+    uint32_t Unknown2a;         /* 0x1c */
+
+    uint8_t  Name[20];         /* 0x20 - 0x33 */
+
+    uint8_t  Unknown3;         /* 0x34 */
+    uint8_t  Unknown4;         /* 0x35 */
+    uint8_t  Unknown5;         /* 0x36 */
+    uint8_t  Unknown6;         /* 0x37 */
+    uint8_t  Unknown7;         /* 0x38 */
+    uint8_t  Unknown8;         /* 0x39 */
+    uint8_t  Unknown9;         /* 0x3a */
+    uint8_t  ManufacturerId;   /* 0x3b */
+    uint16_t CartridgeId;      /* 0x3c */
+    uint8_t  CountryCode;      /* 0x3e */
+    uint8_t  Unknown10;        /* 0x3f */
 } N64RomInfoStruct;
 
-
-
-typedef struct rs4300i_tlb
-{
-        DWORD    hh;
-        DWORD    hl;
-        DWORD    lh;
-        DWORD    ll;
-        BIT     g;
+typedef struct RS4300iTlb {
+    uint32_t hh;
+    uint32_t hl;
+    uint32_t lh;
+    uint32_t ll;
+    bool g;
 } RS4300iTlb;
 
+typedef struct N64RomStruct {
+    uint8_t    *Image;
+    long       Length;
 
+    uint8_t    *Header;
+    uint8_t    *BootCode;
+    uint32_t   *PrgCode;
 
-typedef struct tr_rom
-{
-        BYTE    *Image;                 /* pointer to rom image                 */
-        long    Length;                 /* length of rom image                  */
-
-        BYTE    *Header;                /* pointer to header (same as 'image')  */
-        BYTE    *BootCode;              /* pointer to bootcode                  */
-        DWORD    *PrgCode;               /* pointer to prgcode                   */
-
-        DWORD    PrgCodeBaseOrig;      /* base of prgcode (from header)        */
-        DWORD    PrgCodeBase;           /* base of (prgcode & 0x1fffffff)       */
-        long    PrgCodeLength;         /* length of prgcode                    */
-		N64RomInfoStruct Info;
+    uint32_t   PrgCodeBaseOrig;
+    uint32_t   PrgCodeBase;
+    long       PrgCodeLength;
+    N64RomInfoStruct Info;
 } N64RomStruct;
 
+typedef struct RS4300iReg {
+    int32_t GPR[64];   // General purpose registers
 
-typedef struct rs4300i_reg
-{
-		sDWORD GPR[64];		// general purpose registers
-							// address mode
-							// 64 bit:  *(sQWORD)&GPR[index*2]
-							// 32 bit: GPR[index*2];
-							// this 64/32 address mode is used for all register groups with the exception
-							// of FPR (CPR1) which are the floating point registers
- 
-		sDWORD CPR0[64];	// co-processor 0 registers
-		sDWORD CPR1[64];	// co-processor 1 registers
-		sDWORD CPR2[64];	// co-processor 2 registers
+    int32_t CPR0[64];
+    int32_t CPR1[64];
+    int32_t CPR2[64];
 
-		sDWORD CCR0[64];	// co-processor 0 control registers 
-		sDWORD CCR1[64];	// co-processor 1 control registers 
-		sDWORD CCR2[64];	// co-processor 2 control registers 
+    int32_t CCR0[64];
+    int32_t CCR1[64];
+    int32_t CCR2[64];
 
-		sDWORD FPR[32];		// used instead of CPR1 - floating point registers
+    int32_t FPR[32];
 
-        QWORD   Lo, Hi;     // multiply and divide registers
-        
-        DWORD    PC;        // program counter 
+    uint64_t Lo, Hi;
 
-		// the following structure members are for the emulation engine only, they are not directly
-		// part of the 4300
-        
-        DWORD    PCDelay;   // delayed program counter 
-        int     Delay;      // this is for correct emulation of the 6 stage pipeline
-                            // if(delay == NO_DELAY)   { next instr is pc + 4 } 
-                            // if(delay == DO_DELAY)   { next instr is the delayed instruction } 
-                            // if(delay == EXEC_DELAY) { exec instr @ delayed pc - set in switch} 
-        
-        int     DoOrCheckSthg;
-                            // if '!0' then the rs4300i has to do or check sthg 
-                            // look at the defines that follow this struct 
+    uint32_t PC;
 
-        DWORD CurRoundMode;	// current rounding mode for the FPU
-        DWORD    Code;      // current code (needed for speed) 
+    uint32_t PCDelay;
+    int      Delay;
 
-        DWORD LastPC;		// last address of execution
-		DWORD Break;		// break address
-        BIT     Llbit;		// link bit
-		BYTE pad[3];		// just pads
-		QWORD ICount;		// instruction count
-		DWORD CompareCount;	// count for compare
-		QWORD NextIntCount;	// count for next interrupt (VTrace or Compare)
-		QWORD VTraceCount;	// count of next VTrace
-		DWORD RoundMode;	// value to place Intel FPU in Round Mode
-		DWORD TruncMode;	// value to place Intel FPU in Truncation Mode
-		DWORD CeilMode;		// value to place Intel FPU in Ceiling Mode
-		DWORD FloorMode;	// value to place Intel FPU in Floor Mode
-		RS4300iTlb Tlb[48];
+    int      DoOrCheckSthg;
 
+    uint32_t CurRoundMode;
+    uint32_t Code;
 
-} RS4300iReg; /* struct rs4300i_reg */
+    uint32_t LastPC;
+    uint32_t Break;
+    bool     Llbit;
+    uint8_t  pad[3];
+    uint64_t ICount;
+    uint32_t CompareCount;
+    uint64_t NextIntCount;
+    uint64_t VTraceCount;
+    uint32_t RoundMode;
+    uint32_t TruncMode;
+    uint32_t CeilMode;
+    uint32_t FloorMode;
+    RS4300iTlb Tlb[48];
+} RS4300iReg;
 
+typedef struct N64Mem {
+    uint8_t *rdRam;
+    uint8_t *spDmem;
+    uint8_t *spImem;
+    uint8_t *piRom;
+    uint8_t *piRam;
+    uint8_t *piRamW;
 
-typedef struct mem_struct
-{
-        BYTE    *rdRam;
-        BYTE    *spDmem;
-        BYTE    *spImem;
-        BYTE    *piRom;
-        BYTE    *piRam;
-        BYTE    *piRamW;
+    uint8_t *rdReg;
+    uint8_t *spReg;
+    uint8_t *dpcReg;
+    uint8_t *dpsReg;
+    uint8_t *miReg;
+    uint8_t *miRegW;
+    uint8_t *viReg;
+    uint8_t *aiReg;
+    uint8_t *piReg;
+    uint8_t *piRegW;
+    uint8_t *riReg;
+    uint8_t *siReg;
+    uint8_t *NullMem;
+    uint8_t *atReg;
+    uint8_t *dspPMem;
+    uint8_t *dspDMem;
+    uint8_t *dspRMem;
 
-        BYTE    *rdReg;
-        BYTE    *spReg;
-        BYTE    *dpcReg;
-        BYTE    *dpsReg;
-        BYTE    *miReg;
-        BYTE    *miRegW;
-        BYTE    *viReg;
-        BYTE    *aiReg;
-        BYTE    *piReg;
-        BYTE    *piRegW;
-        BYTE    *riReg;
-        BYTE    *siReg;
-        BYTE    *NullMem;
-		BYTE	*atReg;
-		BYTE	*dspPMem;
-		BYTE    *dspDMem;
-		BYTE	*dspRMem;
+    uint32_t miRegModeRO;
+    uint32_t miRegIntrMaskRO;
 
-        DWORD    miRegModeRO;
-        DWORD    miRegIntrMaskRO;
-
-        DWORD    spRegPC;
-        DWORD    spRegIbist;
-
-        DWORD    spRegStatusRO;
-
-        DWORD    dpcRegStatusRO;
-
-        DWORD    piRegStatusRO;
+    uint32_t spRegPC;
+    uint32_t spRegIbist;
+    uint32_t spRegStatusRO;
+    uint32_t dpcRegStatusRO;
+    uint32_t piRegStatusRO;
 } N64Mem;
 
+extern volatile uint16_t NewTask;
+extern volatile uint16_t DspTask;
 
-extern volatile WORD NewTask;
-extern volatile WORD DspTask;
-
-extern WORD iFPUMode;
+extern uint16_t iFPUMode;
 extern RS4300iReg *r;
 extern N64Mem *m;
 extern N64RomStruct *rom;
 
-extern DWORD iOpCode;
-extern DWORD iNextOpCode;
-extern DWORD iPC;
+extern uint32_t iOpCode;
+extern uint32_t iNextOpCode;
+extern uint32_t iPC;
 
+// CPU register index defines
 #define INDEX           0
 #define RANDOM          1
 #define ENTRYLO0        2
@@ -236,48 +208,40 @@ extern DWORD iPC;
 #define TAGHI           29
 #define ERROREPC        30
 
-#define MAKE_RS           (((BYTE)(iOpCode >> 21)) & 0x1f)
-
-#define MAKE_RT            (((BYTE)(iOpCode >> 16)) & 0x1f)
-
-#define MAKE_RD            (((BYTE)(iOpCode >> 11)) & 0x1f)
-
-#define MAKE_SA            (((BYTE)(iOpCode >>  6)) & 0x1f)
-
-#define MAKE_F             ( (BYTE)(iOpCode)       & 0x3f)
-
-#define MAKE_I             ( (sDWORD) (short)(iOpCode&0xffff) )
-#define MAKE_IU             ((WORD)(iOpCode&0xffff) )
-
-#define MAKE_VD           (((BYTE)(iOpCode >> 6)) & 0x1f)
-
-#define MAKE_VS1            (((BYTE)(iOpCode >> 11)) & 0x1f)
-
-#define MAKE_VS2            (((BYTE)(iOpCode >> 16)) & 0x1f)
-
-#define MAKE_VSEL            (((BYTE)(iOpCode >>  21)) & 0xf)
+// OpCode helpers
+#define MAKE_RS           (((uint8_t)(iOpCode >> 21)) & 0x1f)
+#define MAKE_RT           (((uint8_t)(iOpCode >> 16)) & 0x1f)
+#define MAKE_RD           (((uint8_t)(iOpCode >> 11)) & 0x1f)
+#define MAKE_SA           (((uint8_t)(iOpCode >>  6)) & 0x1f)
+#define MAKE_F            ((uint8_t)(iOpCode) & 0x3f)
+#define MAKE_I            ((int16_t)(iOpCode & 0xffff))
+#define MAKE_IU           ((uint16_t)(iOpCode & 0xffff))
+#define MAKE_VD           (((uint8_t)(iOpCode >> 6)) & 0x1f)
+#define MAKE_VS1          (((uint8_t)(iOpCode >> 11)) & 0x1f)
+#define MAKE_VS2          (((uint8_t)(iOpCode >> 16)) & 0x1f)
+#define MAKE_VSEL         (((uint8_t)(iOpCode >> 21)) & 0xf)
 
 #define MAKE_FMT MAKE_RS
-#define MAKE_FT MAKE_RT
-#define MAKE_FS MAKE_RD
-#define MAKE_FD MAKE_SA
+#define MAKE_FT  MAKE_RT
+#define MAKE_FS  MAKE_RD
+#define MAKE_FD  MAKE_SA
 
-#define FMT_S   16      /* 32bit binary floating-point */
-#define FMT_D   17      /* 64bit binary floating-point */
-#define FMT_W   20      /* 32bit binary fixed-point    */
-#define FMT_L   21      /* 64bit binary fixed-point    */
+#define FMT_S   16
+#define FMT_D   17
+#define FMT_W   20
+#define FMT_L   21
 
-#define MAKE_O             ( r->PC + (sDWORD)(MAKE_I << 2) )
-#define ____T           (iOpCode & 0x00ffffff)
-#define MAKE_T            (((r->PC & 0xff000000) | (____T << 2) ))
+#define MAKE_O    ( r->PC + (MAKE_I << 2) )
+#define ____T     (iOpCode & 0x00ffffff)
+#define MAKE_T    (((r->PC & 0xff000000) | (____T << 2)))
 
-extern void iMainConstruct(char *filename);
+// Function declarations
+extern void iMainConstruct(const char *filename);
 extern void iMainDestruct();
 extern void iMainThreadProc();
 extern void iMainReset();
 extern void iMainStopCPU();
 extern void iMainStartCPU();
 extern void iMainResetDSP();
-
 
 #endif
