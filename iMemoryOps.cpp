@@ -1,7 +1,9 @@
 #include <switch.h>
+#include <GLES2/gl2.h>
 #include <math.h>
 #include "ki.h"
-
+#include "EmuObject1.h"
+#include "mmDisplay.h"
 #include "iMain.h"
 #include "iCPU.h"
 #include "iMemory.h"

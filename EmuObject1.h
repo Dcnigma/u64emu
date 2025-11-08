@@ -1,18 +1,16 @@
 #pragma once
+#include <switch.h>      // must be first
 #include <cstdint>
 #include <cstdio>
-#include "mmDisplay.h"
+
 #include "mmSoundBuffer.h"
 #include "mmDirectInputDevice.h"
 #include "iMain.h"
 
-typedef uint16_t WORD;
-typedef uint32_t DWORD;
-typedef int BOOL;
-
-class CPUState;   // forward declare
-class EmuState;   // forward declare
-
+// Forward declarations
+class CPUState;
+class EmuState;
+class mmDisplay;   // forward declare instead of including the header
 class CEmuObject {
 public:
     CEmuObject();
@@ -26,19 +24,18 @@ public:
 
     mmDirectInputDevice* m_InputDevice;
     mmDisplay* m_Display;
-    mmDirectSoundDevice* m_DirectSoundDevice;
     mmSoundBuffer* m_Audio;
 
-    EmuState* m;  // pointer to emu state
-    CPUState* r;  // pointer to CPU state
+    EmuState* m;   // pointer to emu state
+    CPUState* r;   // pointer to CPU state
 
-    DWORD m_LastTime;
-    DWORD m_NumVSYNCs;
-    DWORD m_LastInstruction;
-    DWORD m_FirstVSYNCTime;
+    uint32_t m_LastTime;
+    uint32_t m_NumVSYNCs;
+    uint32_t m_LastInstruction;
+    uint32_t m_FirstVSYNCTime;
     bool  m_3DActive;
 
-    DWORD m_AudioBufferPosition;
+    uint32_t m_AudioBufferPosition;
     bool m_AudioReady;
     bool m_BadAudio;
 
@@ -46,7 +43,7 @@ public:
     bool Init();
     void Emulate(const char* filename);
     bool UpdateDisplay();
-    void UpdateAudio(DWORD offset);
+    void UpdateAudio(uint32_t offset);
     void UpdateInfo();
     void StopEmulation();
 
@@ -60,12 +57,14 @@ public:
     void OnCancel();
     void OnKillFocus(void* pNewWnd);
 
-    // Input handlers (stubbed)
-    void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
-    void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
-    void OnChar(UINT nChar, UINT nRepCnt, UINT nFlags);
-    void OnSysKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
-    void OnMouseMove(UINT nFlags, void* point);
+    // Input handlers (stubbed for Switch)
+    void OnKeyDown(uint32_t nChar, uint32_t nRepCnt, uint32_t nFlags);
+    void OnKeyUp(uint32_t nChar, uint32_t nRepCnt, uint32_t nFlags);
+    void OnChar(uint32_t nChar, uint32_t nRepCnt, uint32_t nFlags);
+    void OnSysKeyDown(uint32_t nChar, uint32_t nRepCnt, uint32_t nFlags);
+
+    // Switch doesn’t have a Windows-style mouse, stub as needed
+    void OnMouseMove(uint32_t nFlags, void* point);
 
     bool OnInitDialog();
 };

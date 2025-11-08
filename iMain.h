@@ -2,7 +2,7 @@
 #define IMAIN_H
 
 #include <cstdint>
-
+#include "N64Mem.h"
 #define NO_DELAY        0
 #define DO_DELAY        1
 #define EXEC_DELAY      2
@@ -133,41 +133,7 @@ typedef struct RS4300iReg {
     RS4300iTlb Tlb[48];
 } RS4300iReg;
 
-typedef struct N64Mem {
-    uint8_t *rdRam;
-    uint8_t *spDmem;
-    uint8_t *spImem;
-    uint8_t *piRom;
-    uint8_t *piRam;
-    uint8_t *piRamW;
 
-    uint8_t *rdReg;
-    uint8_t *spReg;
-    uint8_t *dpcReg;
-    uint8_t *dpsReg;
-    uint8_t *miReg;
-    uint8_t *miRegW;
-    uint8_t *viReg;
-    uint8_t *aiReg;
-    uint8_t *piReg;
-    uint8_t *piRegW;
-    uint8_t *riReg;
-    uint8_t *siReg;
-    uint8_t *NullMem;
-    uint8_t *atReg;
-    uint8_t *dspPMem;
-    uint8_t *dspDMem;
-    uint8_t *dspRMem;
-
-    uint32_t miRegModeRO;
-    uint32_t miRegIntrMaskRO;
-
-    uint32_t spRegPC;
-    uint32_t spRegIbist;
-    uint32_t spRegStatusRO;
-    uint32_t dpcRegStatusRO;
-    uint32_t piRegStatusRO;
-} N64Mem;
 
 extern volatile uint16_t NewTask;
 extern volatile uint16_t DspTask;

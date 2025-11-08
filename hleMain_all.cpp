@@ -1,3 +1,4 @@
+#include <vector>
 #include "math.h"
 #include "ki.h"
 
@@ -9,7 +10,7 @@
 #include "iCPU.h"
 
 
-#include <vector>
+
 #include <unordered_map>
 #include <functional>
 #include <cmath>

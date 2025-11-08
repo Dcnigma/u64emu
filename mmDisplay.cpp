@@ -1,6 +1,8 @@
-#include "mmDisplay.h"
-#include "mmDisplayD3D.h"  // <-- your wrapper
+#include <switch.h>
+#include <GLES2/gl2.h>
+#include <cstdio>
 #include <cmath>
+#include "mmDisplay.h"
 
 // Simple vertex shader (supports lighting & fog)
 static const char* vertexShaderSrc = R"(
@@ -68,11 +70,15 @@ void main() {
 }
 )";
 
+// ------------------------------------------
+// mmDisplay methods
+// ------------------------------------------
+
 mmDisplay::mmDisplay()
-    : m_IsOpen(false), m_EGLDisplay(EGL_NO_DISPLAY),
-      m_EGLSurface(EGL_NO_SURFACE), m_EGLContext(EGL_NO_CONTEXT),
+    : m_IsOpen(false),
       mShaderProgram(0), mVertexShader(0), mFragmentShader(0),
-      mWidth(1280), mHeight(720), mFogEnabled(false)
+      mWidth(1280), mHeight(720),
+      mFogEnabled(false)
 {
     mAmbient[0]=mAmbient[1]=mAmbient[2]=0.2f; mAmbient[3]=1.0f;
     mLightDir[0]=0; mLightDir[1]=-1; mLightDir[2]=-1;
@@ -139,45 +145,21 @@ bool mmDisplay::InitShaders() {
 }
 
 int mmDisplay::Open() {
-    m_EGLDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    if(m_EGLDisplay == EGL_NO_DISPLAY) { printf("EGL get display failed\n"); return -1; }
-    if(!eglInitialize(m_EGLDisplay, nullptr, nullptr)) { printf("EGL init failed\n"); return -1; }
+    gfxInitDefault();
+    consoleInit(NULL);
 
-    EGLint configAttribs[] = {
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-        EGL_RED_SIZE,8, EGL_GREEN_SIZE,8, EGL_BLUE_SIZE,8, EGL_ALPHA_SIZE,8,
-        EGL_DEPTH_SIZE,24,
-        EGL_NONE
-    };
-    EGLConfig config; EGLint numConfigs;
-    if(!eglChooseConfig(m_EGLDisplay, configAttribs, &config,1,&numConfigs) || numConfigs<1) { printf("EGL config failed\n"); return -1; }
-
-    m_EGLSurface = eglCreateWindowSurface(m_EGLDisplay, config, nullptr, nullptr);
-    if(m_EGLSurface == EGL_NO_SURFACE) { printf("EGL surface failed\n"); return -1; }
-
-    EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
-    m_EGLContext = eglCreateContext(m_EGLDisplay, config, EGL_NO_CONTEXT, contextAttribs);
-    if(m_EGLContext == EGL_NO_CONTEXT) { printf("EGL context failed\n"); return -1; }
-
-    if(!eglMakeCurrent(m_EGLDisplay, m_EGLSurface, m_EGLSurface, m_EGLContext)) { printf("EGL make current failed\n"); return -1; }
-
-    if(!InitShaders()) { printf("Shader init failed\n"); return -1; }
+    if(!InitShaders()) {
+        printf("Shader init failed\n");
+        return -1;
+    }
 
     m_IsOpen = true;
     return 0;
 }
 
 void mmDisplay::Close() {
-    if(m_EGLDisplay != EGL_NO_DISPLAY) {
-        eglMakeCurrent(m_EGLDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-        if(m_EGLContext != EGL_NO_CONTEXT) eglDestroyContext(m_EGLDisplay, m_EGLContext);
-        if(m_EGLSurface != EGL_NO_SURFACE) eglDestroySurface(m_EGLDisplay, m_EGLSurface);
-        eglTerminate(m_EGLDisplay);
-    }
-    m_EGLDisplay = EGL_NO_DISPLAY;
-    m_EGLSurface = EGL_NO_SURFACE;
-    m_EGLContext = EGL_NO_CONTEXT;
+    if(!m_IsOpen) return;
+    gfxExit();
     m_IsOpen = false;
 }
 
@@ -207,7 +189,6 @@ int mmDisplay::SetRenderStateDefault() {
 int mmDisplay::BeginScene() {
     if(!m_IsOpen) return -1;
     glUseProgram(mShaderProgram);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUniform4fv(uAmbientLoc,1,mAmbient);
     glUniform3fv(uLightDirLoc,1,mLightDir);
@@ -226,10 +207,15 @@ int mmDisplay::EndScene() {
 
 int mmDisplay::Present() {
     if(!m_IsOpen) return -1;
-    eglSwapBuffers(m_EGLDisplay,m_EGLSurface);
+    gfxFlushBuffers();
+    gfxSwapBuffers();
+    gspWaitForVBlank();
     return 0;
 }
 
+// -------------------------------
+// Shader helpers
+// -------------------------------
 void mmDisplay::SetAmbientLight(float r,float g,float b,float a) {
     mAmbient[0]=r; mAmbient[1]=g; mAmbient[2]=b; mAmbient[3]=a;
 }
@@ -247,165 +233,139 @@ void mmDisplay::EnableFog(bool enable,float start,float end,float r,float g,floa
     mFogStart = start; mFogEnd = end;
     mFogColor[0]=r; mFogColor[1]=g; mFogColor[2]=b; mFogColor[3]=a;
 }
+
+// -------------------------------
+// Draw helpers
+// -------------------------------
 int mmDisplay::DrawIndexedPrimitive(D3DVertex* vertices, int vertexCount,
                                     unsigned short* indices, int indexCount)
 {
-    if(!m_IsOpen) return -1;
-    if(!vertices || !indices || vertexCount<=0 || indexCount<=0) return -1;
+    if(!m_IsOpen || !vertices || !indices || vertexCount<=0 || indexCount<=0) return -1;
 
-    // Create temporary VBOs
     GLuint vbo, ibo;
-    glGenBuffers(1, &vbo);
-    glGenBuffers(1, &ibo);
+    glGenBuffers(1,&vbo);
+    glGenBuffers(1,&ibo);
 
-    // Upload vertex data
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, vertexCount * sizeof(D3DVertex), vertices, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER,vbo);
+    glBufferData(GL_ARRAY_BUFFER, vertexCount*sizeof(D3DVertex), vertices, GL_DYNAMIC_DRAW);
 
-    // Upload index data
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexCount * sizeof(unsigned short), indices, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexCount*sizeof(unsigned short), indices, GL_DYNAMIC_DRAW);
 
-    // Enable attributes
-    glEnableVertexAttribArray(0); // position
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(D3DVertex), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,sizeof(D3DVertex),(void*)0);
 
-    glEnableVertexAttribArray(1); // normal
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(D3DVertex), (void*)(3*sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,sizeof(D3DVertex),(void*)(3*sizeof(float)));
 
-    glEnableVertexAttribArray(2); // UV
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(D3DVertex), (void*)(6*sizeof(float)));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2,2,GL_FLOAT,GL_FALSE,sizeof(D3DVertex),(void*)(6*sizeof(float)));
 
-    // Draw
-    glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_SHORT, 0);
+    glDrawElements(GL_TRIANGLES,indexCount,GL_UNSIGNED_SHORT,0);
 
-    // Cleanup
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    glDeleteBuffers(1, &vbo);
-    glDeleteBuffers(1, &ibo);
+    glBindBuffer(GL_ARRAY_BUFFER,0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
+    glDeleteBuffers(1,&vbo);
+    glDeleteBuffers(1,&ibo);
 
     return 0;
 }
-// Set world, view, projection matrices
-void mmDisplay::SetTransform(const float* world, const float* view, const float* proj)
-{
+
+// -------------------------------
+// Transform / Camera
+// -------------------------------
+void mmDisplay::SetTransform(const float* world, const float* view, const float* proj) {
     if(!m_IsOpen) return;
     glUseProgram(mShaderProgram);
-    glUniformMatrix4fv(uWorldLoc, 1, GL_FALSE, world);
-    glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, view);
-    glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, proj);
+    glUniformMatrix4fv(uWorldLoc,1,GL_FALSE,world);
+    glUniformMatrix4fv(uViewLoc,1,GL_FALSE,view);
+    glUniformMatrix4fv(uProjLoc,1,GL_FALSE,proj);
 }
 
-// Bind texture to shader
-void mmDisplay::BindTexture(GLuint texture)
-{
+void mmDisplay::BindTexture(GLuint texture) {
     if(!m_IsOpen) return;
     glUseProgram(mShaderProgram);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glUniform1i(uTextureLoc, 0);
+    glUniform1i(uTextureLoc,0);
 }
 
-// Helper: create a look-at matrix (similar to D3D's LookAtLH)
-static void LookAtLH(float* matrix, const float* eye, const float* target, const float* up)
-{
-    float zaxis[3] = { target[0]-eye[0], target[1]-eye[1], target[2]-eye[2] };
-    float len = std::sqrt(zaxis[0]*zaxis[0]+zaxis[1]*zaxis[1]+zaxis[2]*zaxis[2]);
-    zaxis[0]/=len; zaxis[1]/=len; zaxis[2]/=len;
+static void LookAtLH(float* matrix, const float* eye, const float* target, const float* up) {
+    float z[3] = { target[0]-eye[0], target[1]-eye[1], target[2]-eye[2] };
+    float len = std::sqrt(z[0]*z[0]+z[1]*z[1]+z[2]*z[2]);
+    z[0]/=len; z[1]/=len; z[2]/=len;
 
-    float xaxis[3] = {
-        up[1]*zaxis[2] - up[2]*zaxis[1],
-        up[2]*zaxis[0] - up[0]*zaxis[2],
-        up[0]*zaxis[1] - up[1]*zaxis[0]
-    };
-    len = std::sqrt(xaxis[0]*xaxis[0]+xaxis[1]*xaxis[1]+xaxis[2]*xaxis[2]);
-    xaxis[0]/=len; xaxis[1]/=len; xaxis[2]/=len;
+    float x[3] = { up[1]*z[2]-up[2]*z[1], up[2]*z[0]-up[0]*z[2], up[0]*z[1]-up[1]*z[0] };
+    len = std::sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
+    x[0]/=len; x[1]/=len; x[2]/=len;
 
-    float yaxis[3] = {
-        zaxis[1]*xaxis[2] - zaxis[2]*xaxis[1],
-        zaxis[2]*xaxis[0] - zaxis[0]*xaxis[2],
-        zaxis[0]*xaxis[1] - zaxis[1]*xaxis[0]
-    };
+    float y[3] = { z[1]*x[2]-z[2]*x[1], z[2]*x[0]-z[0]*x[2], z[0]*x[1]-z[1]*x[0] };
 
-    matrix[0] = xaxis[0]; matrix[1] = yaxis[0]; matrix[2] = zaxis[0]; matrix[3] = 0.0f;
-    matrix[4] = xaxis[1]; matrix[5] = yaxis[1]; matrix[6] = zaxis[1]; matrix[7] = 0.0f;
-    matrix[8] = xaxis[2]; matrix[9] = yaxis[2]; matrix[10]= zaxis[2]; matrix[11]= 0.0f;
-    matrix[12] = - (xaxis[0]*eye[0] + xaxis[1]*eye[1] + xaxis[2]*eye[2]);
-    matrix[13] = - (yaxis[0]*eye[0] + yaxis[1]*eye[1] + yaxis[2]*eye[2]);
-    matrix[14] = - (zaxis[0]*eye[0] + zaxis[1]*eye[1] + zaxis[2]*eye[2]);
-    matrix[15] = 1.0f;
+    matrix[0]=x[0]; matrix[1]=y[0]; matrix[2]=z[0]; matrix[3]=0.0f;
+    matrix[4]=x[1]; matrix[5]=y[1]; matrix[6]=z[1]; matrix[7]=0.0f;
+    matrix[8]=x[2]; matrix[9]=y[2]; matrix[10]=z[2]; matrix[11]=0.0f;
+    matrix[12]=-(x[0]*eye[0]+x[1]*eye[1]+x[2]*eye[2]);
+    matrix[13]=-(y[0]*eye[0]+y[1]*eye[1]+y[2]*eye[2]);
+    matrix[14]=-(z[0]*eye[0]+z[1]*eye[1]+z[2]*eye[2]);
+    matrix[15]=1.0f;
 }
 
-// Implementation
-void mmDisplay::SetCamera(const float* position, const float* target, const float* up)
-{
+void mmDisplay::SetCamera(const float* position, const float* target, const float* up) {
     if(!m_IsOpen) return;
     float view[16];
     LookAtLH(view, position, target, up);
     glUseProgram(mShaderProgram);
-    glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, view);
+    glUniformMatrix4fv(uViewLoc,1,GL_FALSE,view);
 }
-// Helper: create a perspective projection matrix (like D3D PerspectiveFovLH)
-static void PerspectiveFovLH(float* matrix, float fovY, float aspect, float zNear, float zFar)
-{
-    float yScale = 1.0f / tanf(fovY * 0.5f);
+
+static void PerspectiveFovLH(float* matrix, float fovY, float aspect, float zNear, float zFar) {
+    float yScale = 1.0f / tanf(fovY*0.5f);
     float xScale = yScale / aspect;
-    float zRange = zFar - zNear;
+    float zRange = zFar-zNear;
 
-    matrix[0] = xScale; matrix[1] = 0;      matrix[2] = 0;                    matrix[3] = 0;
-    matrix[4] = 0;      matrix[5] = yScale; matrix[6] = 0;                    matrix[7] = 0;
-    matrix[8] = 0;      matrix[9] = 0;      matrix[10] = zFar / zRange;       matrix[11] = 1;
-    matrix[12] = 0;     matrix[13] = 0;     matrix[14] = -zNear * zFar / zRange; matrix[15] = 0;
+    matrix[0]=xScale; matrix[1]=0; matrix[2]=0; matrix[3]=0;
+    matrix[4]=0; matrix[5]=yScale; matrix[6]=0; matrix[7]=0;
+    matrix[8]=0; matrix[9]=0; matrix[10]=zFar/zRange; matrix[11]=1;
+    matrix[12]=0; matrix[13]=0; matrix[14]=-zNear*zFar/zRange; matrix[15]=0;
 }
 
-void mmDisplay::SetProjectionFov(float fovY, float aspect, float zNear, float zFar)
-{
+void mmDisplay::SetProjectionFov(float fovY, float aspect, float zNear, float zFar) {
     if(!m_IsOpen) return;
     float proj[16];
-    PerspectiveFovLH(proj, fovY, aspect, zNear, zFar);
+    PerspectiveFovLH(proj,fovY,aspect,zNear,zFar);
     glUseProgram(mShaderProgram);
-    glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, proj);
+    glUniformMatrix4fv(uProjLoc,1,GL_FALSE,proj);
 }
 
-GLuint mmDisplay::CreateTexture(int width, int height, const unsigned char* data)
-{
-    if (!m_IsOpen || !data) return 0;
+GLuint mmDisplay::CreateTexture(int width, int height, const unsigned char* data) {
+    if(!m_IsOpen || !data) return 0;
 
     GLuint tex;
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
+    glGenTextures(1,&tex);
+    glBindTexture(GL_TEXTURE_2D,tex);
+    glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,width,height,0,GL_RGBA,GL_UNSIGNED_BYTE,data);
 
-    // Upload RGBA data
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, data);
-
-    // Basic filtering
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    // Clamp edges
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
 
     return tex;
 }
 
-void mmDisplay::SetTexture(GLuint texture)
-{
-    if (!m_IsOpen) return;
+void mmDisplay::SetTexture(GLuint texture) {
+    if(!m_IsOpen) return;
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
+    glBindTexture(GL_TEXTURE_2D,texture);
     glUseProgram(mShaderProgram);
-    glUniform1i(uTextureLoc, 0); // Shader sampler at slot 0
+    glUniform1i(uTextureLoc,0);
 }
 
-void mmDisplay::ReleaseTexture(GLuint texture)
-{
-    if (texture != 0)
-        glDeleteTextures(1, &texture);
+void mmDisplay::ReleaseTexture(GLuint texture) {
+    if(texture!=0)
+        glDeleteTextures(1,&texture);
 }

@@ -1,6 +1,7 @@
+#include <vector>
 #include <switch.h>
 #include <cmath>
-#include <vector>
+
 #include <thread>
 #include <mutex>
 #include <atomic>

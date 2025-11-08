@@ -1,10 +1,10 @@
- 
+
 ifeq ($(strip $(DEVKITPRO)),)
 $(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>/devkitpro")
 endif
 
 TOPDIR ?= $(CURDIR)
- 
+
 include $(DEVKITPRO)/libnx/switch_rules
 
 export BUILD_EXEFS_SRC := build/exefs
@@ -28,7 +28,7 @@ DEFINES   = -D__SWITCH__
 CXXFLAGS  = $(CXXINCS) $(DEFINES) -march=armv8-a -mcpu=cortex-a57+crc+fp+simd -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
 CFLAGS    = $(INCS) $(DEFINES)    -march=armv8-a -mcpu=cortex-a57+crc+fp+simd -fno-strict-aliasing -fomit-frame-pointer -ffunction-sections -fno-rtti -fno-exceptions -mtp=soft -fPIE -O3 -w
 RM        = rm -f
-LINK      = aarch64-none-elf-g++ 
+LINK      = aarch64-none-elf-g++
 CPP		  = aarch64-none-elf-g++
 OUTPUT    = kinx
 
@@ -71,60 +71,60 @@ $(BIN): $(OBJ)
 	$(LINK) $(LINKOBJ) -o $(BIN) $(LIBS)
 
 # Compile each source
-
+#done
 obj/2100dasm.o: 2100dasm.cpp
 	$(CPP) -c 2100dasm.cpp -o obj/2100dasm.o $(CXXFLAGS)
 
 obj/adsp2100.o: adsp2100.cpp
 	$(CPP) -c adsp2100.cpp -o obj/adsp2100.o $(CXXFLAGS)
-
+#done
 obj/iMemory.o: iMemory.cpp
 	$(CPP) -c iMemory.cpp -o obj/iMemory.o $(CXXFLAGS)
-
+#done
 obj/iMemoryOps.o: iMemoryOps.cpp
 	$(CPP) -c iMemoryOps.cpp -o obj/iMemoryOps.o $(CXXFLAGS)
-
+#done
 obj/iBranchOps.o: iBranchOps.cpp
 	$(CPP) -c iBranchOps.cpp -o obj/iBranchOps.o $(CXXFLAGS)
-
+#done
 obj/iCPU.o: iCPU.cpp
 	$(CPP) -c iCPU.cpp -o obj/iCPU.o $(CXXFLAGS)
-
+#done
 obj/iFPOps.o: iFPOps.cpp
 	$(CPP) -c iFPOps.cpp -o obj/iFPOps.o $(CXXFLAGS)
-
+#done
 obj/iATA.o: iATA.cpp
 	$(CPP) -c iATA.cpp -o obj/iATA.o $(CXXFLAGS)
-
+#done
 obj/iMain.o: iMain.cpp
 	$(CPP) -c iMain.cpp -o obj/iMain.o $(CXXFLAGS)
-
+#done
 obj/hleDSP.o: hleDSP.cpp
 	$(CPP) -c hleDSP.cpp -o obj/hleDSP.o $(CXXFLAGS)
-
+#done
 obj/hleMain.o: hleMain.cpp
 	$(CPP) -c hleMain.cpp -o obj/hleMain.o $(CXXFLAGS)
-
+#done
 obj/iRom.o: iRom.cpp
 	$(CPP) -c iRom.cpp -o obj/iRom.o $(CXXFLAGS)
-
-obj/CEmuObject.o: CEmuObject.cpp
-	$(CPP) -c CEmuObject.cpp -o obj/CEmuObject.o $(CXXFLAGS)
-
+#done
+obj/CEmuObject.o: EmuObject.cpp
+	$(CPP) -c EmuObject.cpp -o obj/EmuObject.o $(CXXFLAGS)
+#done
 obj/ki.o: ki.cpp
 	$(CPP) -c ki.cpp -o obj/ki.o $(CXXFLAGS)
-
+#done
 obj/iGeneralOps.o: iGeneralOps.cpp
 	$(CPP) -c iGeneralOps.cpp -o obj/iGeneralOps.o $(CXXFLAGS)
-
+#done
 obj/mmDisplay.o: mmDisplay.cpp
 	$(CPP) -c mmDisplay.cpp -o obj/mmDisplay.o $(CXXFLAGS)
-
+#done
 obj/mmInputDevice.o: mmInputDevice.cpp
 	$(CPP) -c mmInputDevice.cpp -o obj/mmInputDevice.o $(CXXFLAGS)
 obj/mmInputDevice.o: $(GLOBALDEPS) mmInputDevice.cpp
-	$(CPP) -c mmInputDevice.cpp -o obj/mmInputDevice.o $(CXXFLAGS)		
- 
+	$(CPP) -c mmInputDevice.cpp -o obj/mmInputDevice.o $(CXXFLAGS)
+
 #---------------------------------------------------------------------------------
 # main targets
 #---------------------------------------------------------------------------------
@@ -143,5 +143,5 @@ endif
 $(BINDIR)/$(OUTPUT).elf	:	$(OFILES)
 
 $(OFILES_SRC)	: $(HFILES_BIN)
-	
+
 # end of Makefile ...

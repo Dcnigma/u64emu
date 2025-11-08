@@ -1,60 +1,43 @@
 #ifndef SC_SoundBuffer_H
 #define SC_SoundBuffer_H
 
-/* Copyright STRiCOR, Inc. 1997,98
+#include <vector>
+#include <cstdint>
 
-Module:
-----------------------------------------------------------
-	mmSoundBuffer
+extern "C" {
+#include <switch.h>
+}
 
-Function:
-----------------------------------------------------------
-	A class to handle the DirectX Sound API as related to
-	buffers.
-
-Revision History:
-----------------------------------------------------------
-	03/03/98 - created - jrb
-
-
-*/
-
-#include "mmDirectSoundDevice.h"
-
-class mmSoundBuffer : public CObject
- {
-  public:
+class mmSoundBuffer
+{
+public:
     mmSoundBuffer();
     ~mmSoundBuffer();
-    DECLARE_SERIAL(mmSoundBuffer);
 
-	mmDirectSoundDevice *m_DirectSoundDevice;
-	LPDIRECTSOUND m_DirectSound;
-	LPDIRECTSOUNDBUFFER m_Buffer;
-	LPDIRECTSOUND3DBUFFER m_3DBuffer;
-	CObject *m_Scene;
-	WORD m_ThisMachine;
-	WORD m_TotalLength;
-	WORD m_BufLength;
-	BOOL m_Is3D;
-	CFile *m_File;
+    // Basic audio buffer info
+    uint16_t m_ThisMachine;
+    uint16_t m_TotalLength;
+    uint16_t m_BufLength;
+    bool m_Is3D;
 
-	HMMIO m_MMIO;
-	WAVEFORMATEX *m_WaveFormat;
-	MMCKINFO m_ChunkInfo;
-    
-	virtual BOOL Create(mmDirectSoundDevice *m_SoundDevice);
-	BOOL FromFile(char *filename,BOOL Is3D);
-	BOOL FromMemory(char *src,DWORD Length,DWORD Rate,WORD Bits,WORD Buffers, BOOL Is3D);
-	BOOL FromFileRaw(char *src,DWORD Length,DWORD Rate,WORD Bits, BOOL Is3D);
-	BOOL Update(char *src,DWORD Length,WORD pos);
-	BOOL Play(DWORD from,DWORD to,DWORD flags);
-	BOOL SetVelocity(D3DVECTOR *vel);
-	BOOL SetPosition(D3DVECTOR *pos);
-	BOOL SetFrequency(DWORD freq);
-	BOOL SetVolume(float vol);
-	BOOL Stop();
-	BOOL IsPlaying();
-  };
+    // Simple file handling using libnx
+    FsFile m_File;                  // libnx file handle
+    std::vector<uint8_t> m_Data;    // Raw audio data
+
+    // Methods
+    bool Create();
+    bool FromFile(const char* filename, bool is3D = false);
+    bool FromMemory(const uint8_t* src, uint32_t length, uint32_t rate, uint16_t bits, uint16_t buffers, bool is3D = false);
+    bool Update(const uint8_t* src, uint32_t length, uint16_t pos);
+    bool Play(uint32_t from, uint32_t to);
+    bool SetVolume(float vol);
+    bool Stop();
+    bool IsPlaying() const;
+
+private:
+    uint32_t m_Frequency;
+    float m_Volume;
+    bool m_Playing;
+};
 
 #endif

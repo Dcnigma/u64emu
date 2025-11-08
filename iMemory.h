@@ -1,22 +1,17 @@
 #ifndef IMEM_H
 #define IMEM_H
+
 #include <switch.h>
 #include <cstdint>
 #include <cstddef>
 #include <cstdio>
 #include <fstream>
+#include "N64Mem.h"   // include the full struct now
 
 using BYTE  = uint8_t;
 using WORD  = uint16_t;
 using DWORD = uint32_t;
 using QWORD = uint64_t;
-
-// Memory sizes
-constexpr size_t RDRAM_SIZE = 8 * 1024 * 1024;
-constexpr size_t SRAM_OFFSET = RDRAM_SIZE;
-
-// Forward declaration
-struct N64Mem;
 
 // Global memory pointer
 extern N64Mem* m;
@@ -58,16 +53,17 @@ DWORD iMemReadDWord(DWORD addr);
 QWORD iMemReadQWord(DWORD addr);
 
 void iMemWriteByte(BYTE val, DWORD addr);
-void iMemWriteWord(WORD val, DWORD addr);
-void iMemWriteDWord(DWORD val, DWORD addr);
+void iMemWriteWord(DWORD addr, WORD val);
+void iMemWriteDWord(DWORD addr, DWORD val);
 void iMemWriteQWord(QWORD val, DWORD addr);
+void iMemWriteByte(DWORD addr, BYTE val);
 
 // DSP access
-BYTE dspReadByte(DWORD addr);
+BYTE dspReadByte(DWORD addr, bool isDMem);
 int16_t dspReadWord(DWORD addr);
 DWORD dspReadDWord(DWORD addr);
 
-void dspWriteByte(DWORD addr, BYTE val);
+void dspWriteByte(DWORD addr, BYTE val, bool isDMem);
 void dspWriteWord(DWORD addr, WORD val);
 void dspWriteDWord(DWORD addr, DWORD val);
 

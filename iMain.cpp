@@ -1,3 +1,4 @@
+#include <switch.h>
 #include "iMain.h"
 #include "iCPU.h"       // Core 4600 emulation routines
 #include "iMemory.h"    // Memory emulation routines
@@ -5,10 +6,11 @@
 #include "dynaCompiler.h"
 #include "adsp2100.h"
 #include "hleDSP.h"
-#include <switch.h>
+
 #include <thread>
 #include <fstream>
 #include <chrono>
+#include "N64Mem.h"
 
 volatile uint16_t DspTask;
 volatile uint16_t NewTask;

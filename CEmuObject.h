@@ -1,6 +1,10 @@
 #pragma once
-#include <switch.h>
 #include <vector>
+
+extern "C" {
+#include <switch.h>
+}
+
 
 // Minimal emulator object with simple memory mapping.
 // ROM mapped at ROM_BASE..ROM_BASE+romSize-1
